@@ -27,7 +27,7 @@ The app is a **custom Shopify app** (Custom distribution, no App Store listing) 
 ### 2. Checkout UI Extension
 - Template: `checkout_ui`
 - Target: `purchase.checkout.block.render` (Plus-only target)
-- API version: `2025-10`
+- API version: `2026-01`
 - Purpose:
   - Detect when Co-op or Plant payment method is selected
   - Render required input fields:
@@ -96,8 +96,8 @@ Matches payment methods by **name** (available via the Function's GraphQL input 
 
 ```json
 {
-  "coOpPaymentMethodNames": ["Charge to Co-op Account (PO)"],
-  "plantPaymentMethodNames": ["Charge to Plant Account (PO)"]
+  "coOpPaymentMethodNames": ["Co-op"],
+  "plantPaymentMethodNames": ["Plant"]
 }
 ```
 
@@ -226,7 +226,7 @@ Key settings in `shopify.extension.toml`:
 **Rendering rules:**
 - If no Co-op/Plant method selected → render nothing
 - If Co-op method selected:
-  - Render `Customer Code` dropdown (required) — populated from `docs/customer-codes.md`. Display: `"Code - Name"`, value: code only.
+  - Render `Customer Code` dropdown (required) — populated from `docs/customer-codes.md`. Display and value: 4-character code only.
   - Render `Notes` textarea (optional)
   - Set attributes: `co_op_type = "co-op"`, `co_op_customer_code`, `co_op_notes`
 - If Plant method selected:
@@ -243,7 +243,7 @@ Key settings in `shopify.extension.toml`:
 
 1. **Create manual payment methods** in Shopify Admin
    - Settings → Payments → Manual payment methods
-   - Create "Charge to Co-op Account (PO)" and "Charge to Plant Account (PO)" (names must match config exactly)
+   - Create "Co-op" and "Plant" (names must exactly match the Step 3 config values)
 
 2. **Install app** on Shopify Plus store
    - Custom distribution app with protected customer data access

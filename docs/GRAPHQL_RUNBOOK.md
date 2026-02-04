@@ -16,8 +16,9 @@ This document provides GraphQL mutations and queries for setting up the Co-op/Pl
 
 1. **Create manual payment methods** in Shopify Admin:
    - Settings → Payments → Manual payment methods
-   - Create "Charge to Co-op Account (PO)"
-   - Create "Charge to Plant Account (PO)"
+   - Create "Co-op"
+   - Create "Plant"
+   - Names must **exactly match** what you put in the Step 3 config below
 
 2. **Install app** on the store via `npm run dev`
 
@@ -27,7 +28,7 @@ This document provides GraphQL mutations and queries for setting up the Co-op/Pl
 
 ## Quick Setup Checklist
 
-1. [ ] Create manual payment methods ("Charge to Co-op Account (PO)", "Charge to Plant Account (PO)")
+1. [ ] Create manual payment methods ("Co-op", "Plant")
 2. [ ] Run `npm run dev` and install app
 3. [ ] Step 1: Get function ID
 4. [ ] Step 2: Create PaymentCustomization
@@ -114,7 +115,7 @@ mutation SetPaymentCustomizationConfig {
         namespace: "$app:payment-customization"
         key: "function-configuration"
         type: "json"
-        value: "{\"coOpPaymentMethodNames\":[\"Charge to Co-op Account (PO)\"],\"plantPaymentMethodNames\":[\"Charge to Plant Account (PO)\"]}"
+        value: "{\"coOpPaymentMethodNames\":[\"Co-op\"],\"plantPaymentMethodNames\":[\"Plant\"]}"
       }
     ]
   ) {
