@@ -1,0 +1,30 @@
+{
+  "payload": {
+    "export": "cart-payment-methods-transform-run",
+    "target": "cart.payment-methods.transform.run",
+    "input": {
+      "cart": {
+        "buyerIdentity": {
+          "customer": {
+            "metafield": {
+              "value": "[\"co-op\", \"plant\"]"
+            }
+          }
+        }
+      },
+      "paymentMethods": [
+        { "id": "gid://shopify/PaymentMethod/1", "name": "Credit Card" },
+        { "id": "gid://shopify/PaymentMethod/2", "name": "Charge to Co-op Account (PO)" },
+        { "id": "gid://shopify/PaymentMethod/3", "name": "Charge to Plant Account (PO)" }
+      ],
+      "paymentCustomization": {
+        "metafield": {
+          "value": "{\"coOpPaymentMethodNames\":[\"Charge to Co-op Account (PO)\"],\"plantPaymentMethodNames\":[\"Charge to Plant Account (PO)\"]}"
+        }
+      }
+    },
+    "output": {
+      "operations": []
+    }
+  }
+}

@@ -1,0 +1,23 @@
+query CartPaymentMethodsTransformRunInput {
+  cart {
+    buyerIdentity {
+      customer {
+        coop: metafield(namespace: "custom", key: "co_op") {
+          value
+        }
+        plant: metafield(namespace: "custom", key: "plant") {
+          value
+        }
+      }
+    }
+  }
+  paymentMethods {
+    id
+    name
+  }
+  paymentCustomization {
+    metafield(namespace: "$app:payment-customization", key: "function-configuration") {
+      value
+    }
+  }
+}
