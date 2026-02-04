@@ -6,9 +6,8 @@
       "cart": {
         "buyerIdentity": {
           "customer": {
-            "metafield": {
-              "value": "[\"co-op\", \"plant\"]"
-            }
+            "coop": { "value": "true" },
+            "plant": { "value": "true" }
           }
         }
       },

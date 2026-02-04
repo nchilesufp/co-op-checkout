@@ -152,14 +152,14 @@ query GetShopId {
 
 ## Step 5: Set Shop Config (for Checkout UI)
 
-Stores config on the Shop for the Checkout UI extension to read. This config includes **payment method handles** (not just names) because the Checkout UI extension's `PaymentOption` type only exposes `type` and `handle` — no `name` property.
+Stores config on the Shop for the Checkout UI extension to read. This config uses a **handle-to-type map** because the Checkout UI extension's `PaymentOption` type only exposes `type` and `handle` — no `name` property. Each key is a payment method handle; the value is `"co-op"` or `"plant"`.
 
 Handles are opaque identifiers like `custom-manual-payment-<hash>`. To discover them:
 1. Run `shopify app dev`
 2. Add a `console.log` of `useSelectedPaymentOptions()` in your extension
-3. Select each payment method at checkout and note the handle from the console
+3. Select each payment method at checkout and note the handle from the dev console
 
-**Replace `YOUR_SHOP_ID` with the ID from Step 4. Replace the handles with the actual values from your store.**
+**Replace `YOUR_SHOP_ID` with the ID from Step 4. Replace the handle placeholders with actual values from your store.**
 
 ```graphql
 mutation SetShopConfig {
@@ -170,7 +170,7 @@ mutation SetShopConfig {
         namespace: "$app:co-op-plant-payment"
         key: "configuration"
         type: "json"
-        value: "{\"coOpPaymentMethodNames\":[\"Co-op\"],\"plantPaymentMethodNames\":[\"Plant\"],\"coOpPaymentMethodHandles\":[\"COOP_HANDLE_HERE\"],\"plantPaymentMethodHandles\":[\"PLANT_HANDLE_HERE\"]}"
+        value: "{\"paymentMethodHandles\":{\"COOP_HANDLE_HERE\":\"co-op\",\"PLANT_HANDLE_HERE\":\"plant\"}}"
       }
     ]
   ) {
@@ -187,7 +187,7 @@ mutation SetShopConfig {
 }
 ```
 
-**Note:** Step 3 (PaymentCustomization config) and Step 5 (Shop config) now have **different** formats. Step 3 only needs names (the Function matches by name via GraphQL). Step 5 needs handles (the Checkout UI extension matches by handle). If you recreate payment methods, both configs need updating — Step 3 with new names, Step 5 with new handles.
+**Note:** Step 3 (PaymentCustomization config) and Step 5 (Shop config) have **different** formats by design. Step 3 maps payment method names to roles (the Function matches by name via GraphQL). Step 5 maps payment method handles to roles (the Checkout UI extension can only see handles). If you recreate payment methods, re-run Step 3 with new names and Step 5 with new handles.
 
 ---
 
@@ -199,11 +199,11 @@ mutation SetShopConfig {
 | **Step 2** | Create PaymentCustomization | Never (once created, it exists). Only re-run if you deleted it. |
 | **Step 3** | Set PaymentCustomization config | **Payment method names change** in Shopify Admin |
 | **Step 4** | Get Shop ID | Never (Shop ID never changes) |
-| **Step 5** | Set Shop config | **Payment method names change** in Shopify Admin |
+| **Step 5** | Set Shop config | **Payment methods deleted/recreated** (handles change) |
 | **Step 6** | Create metafield definitions | Never (once created, they exist) |
 | **Step 7** | Set customer entitlements | Per-customer, as needed |
 
-**Key point:** The payment method names in the config (Steps 3 & 5) must **exactly match** the names in Shopify Admin (Settings → Payments → Manual payment methods). If you rename or recreate payment methods, re-run Steps 3 and 5 with the new names.
+**Key point:** Step 3 names must **exactly match** the payment method names in Shopify Admin (Settings → Payments → Manual payment methods). Step 5 handles must match the actual handles from `useSelectedPaymentOptions()`. Renaming a payment method requires re-running Step 3. Deleting and recreating one requires re-running both Step 3 (new name) and Step 5 (new handle).
 
 ---
 
@@ -341,7 +341,8 @@ query GetShopConfig {
 ```
 
 **Expected result:**
-- `metafield.value` contains the same config JSON as the PaymentCustomization (Step 3)
+- `metafield.value` contains the handle-to-type map: `{"paymentMethodHandles":{"<handle>":"co-op","<handle>":"plant"}}`
+- This format is intentionally different from Step 3 (which uses names). The Checkout UI extension can only see handles.
 - If `null`, the Checkout UI extension won't know which payment methods are Co-op/Plant
 
 ---
@@ -364,9 +365,10 @@ query GetShopConfig {
 ### Checkout UI not showing fields
 
 1. Verify extension block is added in Checkout Editor
-2. Check Shop config metafield is set
-3. Verify payment method names match config
+2. Check Shop config metafield is set (run the "Get Shop Config" verification query)
+3. Verify payment method handles in Shop config match actual handles — log `useSelectedPaymentOptions()` in the extension and compare
 4. Check browser console for errors
+5. Use the dev console preview link (`<tunnel>/extensions/dev-console`) rather than navigating checkout manually — Checkout Editor caches the tunnel URL across sessions
 
 ### Customer can't see Co-op/Plant payment
 

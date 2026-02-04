@@ -88,7 +88,11 @@ These metafields use the `custom` namespace (merchant-owned) so they:
 
 ## 2.2 Config JSON Structure
 
-Config JSON shared between Function and Checkout UI:
+The two extensions use **different** config formats because they have different data available to them.
+
+### PaymentCustomization config (Function — Step 3)
+
+Matches payment methods by **name** (available via the Function's GraphQL input query):
 
 ```json
 {
@@ -97,9 +101,22 @@ Config JSON shared between Function and Checkout UI:
 }
 ```
 
-- `coOpPaymentMethodNames` - array of manual payment method labels that behave as Co-op (e.g., `"Charge to Co-op Account (PO)"`)
-- `plantPaymentMethodNames` - array of manual payment method labels that behave as Plant (e.g., `"Charge to Plant Account (PO)"`)
-- Labels must **exactly match** the payment method names in Shopify Admin (Settings → Payments → Manual payment methods)
+Names must **exactly match** the payment method names in Shopify Admin (Settings → Payments → Manual payment methods).
+
+### Shop config (Checkout UI — Step 5)
+
+Matches payment methods by **handle** (the only identifier exposed by `useSelectedPaymentOptions()`). Uses a handle-to-type map:
+
+```json
+{
+  "paymentMethodHandles": {
+    "custom-manual-payment-<coop-hash>": "co-op",
+    "custom-manual-payment-<plant-hash>": "plant"
+  }
+}
+```
+
+Handles are opaque and stable for the lifetime of a manual payment method. Discover them by logging `useSelectedPaymentOptions()` at checkout during development.
 
 ---
 
@@ -197,33 +214,24 @@ Key behaviors:
 shopify app generate extension --template checkout_ui --name=checkout-ui
 ```
 
-Configure `shopify.extension.toml`:
+Key settings in `shopify.extension.toml`:
 
-```toml
-api_version = "2025-10"
-
-[[extensions]]
-name = "Co-op/Plant Checkout Fields"
-handle = "checkout-ui"
-type = "ui_extension"
-
-[[extensions.targeting]]
-target = "purchase.checkout.block.render"
-module = "./src/Checkout.jsx"
-
-[extensions.capabilities]
-block_progress = true
-```
+- `api_version = "2026-01"`
+- `target = "purchase.checkout.block.render"` (Plus-only)
+- `block_progress = true`
+- Metafield declaration: namespace `$app:co-op-plant-payment`, key `configuration`
 
 ## 4.2 UI & Validation Behavior
 
 **Rendering rules:**
 - If no Co-op/Plant method selected → render nothing
 - If Co-op method selected:
-  - Render `Customer Code` (required), `Notes` (optional)
+  - Render `Customer Code` dropdown (required) — populated from `docs/customer-codes.md`. Display: `"Code - Name"`, value: code only.
+  - Render `Notes` textarea (optional)
   - Set attributes: `co_op_type = "co-op"`, `co_op_customer_code`, `co_op_notes`
 - If Plant method selected:
-  - Render `Plant #` (required), `Notes` (optional)
+  - Render `Plant #` text field (required)
+  - Render `Notes` textarea (optional)
   - Set attributes: `co_op_type = "plant"`, `co_op_plant_number`, `co_op_notes`
 
 **Validation:**
@@ -273,13 +281,47 @@ block_progress = true
 
 ## 6.2 Checkout UI Test Cases
 
-- Co-op method selected → Customer Code field required, Notes optional
-- Plant method selected → Plant # field required, Notes optional
-- Empty required field → Checkout blocked with error message
-- Order attributes set correctly after completion
+- Co-op method selected → Customer Code dropdown appears with all 34 codes, Notes optional
+- Plant method selected → Plant # text field appears, Notes optional
+- No code/number selected → Checkout blocked with error message
+- Order attributes set correctly after completion (`co_op_type`, `co_op_customer_code` or `co_op_plant_number`, `co_op_notes`)
 
 ## 6.3 Debugging
 
 - Check function logs in Partner Dashboard → Extensions → Functions
 - Verify `buyerIdentity` is populated (not `null`) in function input
 - Verify customer is logged in during checkout
+
+---
+
+# 7. Gotchas & Lessons Learned
+
+These are non-obvious platform behaviors discovered during development. Read before debugging.
+
+### Payment method handles are opaque hashes, not derived from names
+
+Handles look like `custom-manual-payment-56cf4b0afa456be23003a3c1792143a1`. They are **not** slugified versions of the payment method name. Do not try to compute them from names. The only way to discover a handle is to log `useSelectedPaymentOptions()` at runtime and select each payment method.
+
+### Function and Checkout UI configs must use different formats
+
+The Payment Customization Function receives payment method **names** via its GraphQL input query. The Checkout UI Extension only receives **handles** via `useSelectedPaymentOptions()`. These are different identifiers with different stability characteristics. The two config metafields (Step 3 and Step 5) must therefore store different data. This is a platform limitation, not a design choice.
+
+### Handles are stable, but only while the payment method exists
+
+A manual payment method's handle does not change across sessions or page reloads. It changes only if the payment method is deleted and recreated in Admin. If you recreate a payment method, re-run Step 5.
+
+### `useAppMetafields()` loads asynchronously
+
+The first render of the extension will receive an empty array from `useAppMetafields()`. The metafield value is available on subsequent renders. The extension must handle the empty case gracefully — returning `null` (rendering nothing) until config is loaded is the correct behavior.
+
+### `<s-text-field>` does not support `multiline`
+
+Use `<s-text-area>` for multi-line input. It accepts the same core props (`label`, `value`, `onInput`) plus `rows`.
+
+### `<s-select>` uses `onChange`, not `onInput`
+
+The select component fires `change` when a selection is completed. Use `onChange` for the handler. The `value` is read the same way as other fields: `e.currentTarget.value`.
+
+### Checkout Editor caches the dev tunnel URL
+
+Each `shopify app dev` session creates a new Cloudflare tunnel. The Checkout Editor saves the URL from the first session and does not update it. If the extension block is not appearing, do not navigate checkout manually — use the preview link from the dev console at `<tunnel>/extensions/dev-console`.

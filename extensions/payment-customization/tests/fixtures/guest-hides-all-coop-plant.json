@@ -21,8 +21,8 @@
     },
     "output": {
       "operations": [
-        { "hide": { "paymentMethodId": "gid://shopify/PaymentMethod/2" } },
-        { "hide": { "paymentMethodId": "gid://shopify/PaymentMethod/3" } }
+        { "paymentMethodHide": { "paymentMethodId": "gid://shopify/PaymentMethod/2" } },
+        { "paymentMethodHide": { "paymentMethodId": "gid://shopify/PaymentMethod/3" } }
       ]
     }
   }

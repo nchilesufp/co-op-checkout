@@ -9,6 +9,43 @@ import {
   useInstructions,
 } from '@shopify/ui-extensions/checkout/preact';
 
+const CUSTOMER_CODES = [
+  { code: '9050', name: 'UFP International' },
+  { code: '9219', name: 'UFP Janesville' },
+  { code: '9221', name: 'UFP Belchertown' },
+  { code: '9223', name: 'UFP Windsor' },
+  { code: '9227', name: 'UFP Saginaw' },
+  { code: '9228', name: 'UFP Ranson' },
+  { code: '9233', name: 'UFP Chandler' },
+  { code: '9253', name: 'UFP Hamilton' },
+  { code: '9294', name: 'UFP Schertz' },
+  { code: '9336', name: 'UFP Lansing' },
+  { code: '9378', name: 'UFP White Bear Lake' },
+  { code: '9380', name: 'UFP Woodburn' },
+  { code: '9381', name: 'UFP Thornton' },
+  { code: '9382', name: 'UFP Riverside' },
+  { code: '9436', name: 'UFP Rockwell' },
+  { code: '9438', name: 'UFP Thomaston' },
+  { code: '9523', name: 'UFP Bartow' },
+  { code: '9527', name: 'UFP Athens' },
+  { code: '9552', name: 'UFP Fairless Hills' },
+  { code: 'BMSG', name: 'Sollio Groupe' },
+  { code: 'BPOL', name: 'STELLA JONES' },
+  { code: 'DKEX', name: 'Deck Expressions' },
+  { code: 'DMRN', name: 'CDP Management - Decks Direct' },
+  { code: 'GEUS', name: 'Forest Products' },
+  { code: 'HAMA', name: 'Hansen Marketing' },
+  { code: 'HHSL', name: 'Home Hardware' },
+  { code: 'HLVM', name: 'Home Tops' },
+  { code: 'LGDI', name: 'Legends' },
+  { code: 'LIVB', name: 'LIV' },
+  { code: 'MLLB', name: 'McLean Lumber' },
+  { code: 'MVIN', name: 'Missouri Vinyl Products' },
+  { code: 'PKFS', name: 'Parksite Plunkett-Webster' },
+  { code: 'RULM', name: 'Russin Lumber' },
+  { code: 'WAUS', name: 'Wausau Supply' },
+];
+
 export default async () => {
   render(<Extension />, document.body);
 };
@@ -26,25 +63,21 @@ function Extension() {
     type: 'shop',
   });
 
-  let config = { coOpPaymentMethodHandles: [], plantPaymentMethodHandles: [] };
+  let paymentMethodHandles = {};
   if (shopMetafields.length > 0 && shopMetafields[0].metafield?.value) {
     try {
-      config = JSON.parse(shopMetafields[0].metafield.value);
+      paymentMethodHandles = JSON.parse(shopMetafields[0].metafield.value).paymentMethodHandles || {};
     } catch (e) {
-      // config stays as default empty arrays
+      // paymentMethodHandles stays as empty object
     }
   }
 
-  // Detect which payment method is selected by comparing handles
+  // Detect which payment method is selected by looking up its handle in config
   const selectedOptions = useSelectedPaymentOptions();
   let selectedPaymentType = null;
   for (const option of selectedOptions) {
-    if (config.coOpPaymentMethodHandles.includes(option.handle)) {
-      selectedPaymentType = 'co-op';
-      break;
-    }
-    if (config.plantPaymentMethodHandles.includes(option.handle)) {
-      selectedPaymentType = 'plant';
+    if (paymentMethodHandles[option.handle]) {
+      selectedPaymentType = paymentMethodHandles[option.handle];
       break;
     }
   }
@@ -130,11 +163,16 @@ function Extension() {
       )}
 
       {isCoOp ? (
-        <s-text-field
+        <s-select
           label="Customer Code"
           value={customerCode}
-          onInput={(e) => { setCustomerCode(/** @type {any} */ (e.currentTarget).value); setValidationError(null); }}
-        />
+          placeholder="Select your Customer Code"
+          onChange={(e) => { setCustomerCode(/** @type {any} */ (e.currentTarget).value); setValidationError(null); }}
+        >
+          {CUSTOMER_CODES.map(({ code, name }) => (
+            <s-option key={code} value={code}>{code} - {name}</s-option>
+          ))}
+        </s-select>
       ) : (
         <s-text-field
           label="Plant #"

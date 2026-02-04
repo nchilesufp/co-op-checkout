@@ -6,9 +6,8 @@
       "cart": {
         "buyerIdentity": {
           "customer": {
-            "metafield": {
-              "value": "[\"co-op\"]"
-            }
+            "coop": { "value": "true" },
+            "plant": null
           }
         }
       },
@@ -25,7 +24,7 @@
     },
     "output": {
       "operations": [
-        { "hide": { "paymentMethodId": "gid://shopify/PaymentMethod/3" } }
+        { "paymentMethodHide": { "paymentMethodId": "gid://shopify/PaymentMethod/3" } }
       ]
     }
   }
