@@ -201,8 +201,10 @@ Stores config on the Shop for the Checkout UI extension to read. This config use
 
 Handles are opaque identifiers like `custom-manual-payment-<hash>`. To discover them:
 1. Run `shopify app dev`
-2. Add a `console.log` of `useSelectedPaymentOptions()` in your extension
-3. Select each payment method at checkout and note the handle from the dev console
+2. Add `console.log('selectedOptions:', useSelectedPaymentOptions());` after line 76 in `extensions/checkout-ui/src/Checkout.jsx`
+3. Go to `<tunnel>/extensions/dev-console` (the tunnel URL is shown in your terminal) and use the preview link from there — **do not navigate to checkout manually**, as the Checkout Editor caches old tunnel URLs
+4. Select each payment method at checkout and note the handle from the browser dev console (F12)
+5. Remove the console.log when done
 
 **Replace `YOUR_SHOP_ID` with the ID from Step 4. Replace the handle placeholders with actual values from your store.**
 
