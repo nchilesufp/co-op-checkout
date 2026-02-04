@@ -48,9 +48,9 @@ This document covers deploying the app and configuring it on each store.
 
 ## Deploy
 
-This is a **Custom Distribution** app — it is not on the Shopify App Store. Each target org installs it via a direct link generated in the Partner Dashboard.
+This is a **Custom Distribution** app — it is not on the Shopify App Store. Installation is done via a link generated in the Partner Dashboard.
 
-### One-time: push the app
+### Push the app
 
 Run from the repo root:
 
@@ -58,24 +58,22 @@ Run from the repo root:
 npm run deploy
 ```
 
-This pushes the app and its extensions to the Partner Dashboard. Run this whenever you change code and want the changes live for new installs.
+This pushes the app and its extensions to the Partner Dashboard. Run this whenever you change code and want the changes available for install.
 
-### Generate an install link per org
-
-Custom distribution install links are scoped to a **single Plus organization**. A separate link must be generated for each target org (the app code is the same — only the link differs).
-
-For each target org:
+### Generate the install link
 
 1. Go to **Partner Dashboard → Apps → Co-op/Plant Payment**
-2. Click **Custom distribution** (or **Share install link**)
-3. Enter one of that org's store domains (e.g., `their-store.myshopify.com`)
+2. Click **Custom distribution**
+3. Enter the target store's `myshopify.com` domain
 4. Leave **"Allow multi-store installs for one Plus organization"** checked if that org has multiple stores that need the app
 5. Click **Generate link**
-6. Share the generated link with that org's store owner
+6. Share the generated link with that store's owner
 
-### Per-org: install and configure
+**Note:** A custom distribution app produces one install link, scoped to the Plus organization of the store domain you entered. If you need to install on stores in a **different** Plus organization, contact Shopify Partner Support — the mechanism for multi-org distribution of a single app is not documented in the public developer docs.
 
-Each org that receives their install link needs to:
+### Per-store: install and configure
+
+Each store that receives the install link needs to:
 
 1. Open the install link in a browser while logged into their Shopify Admin
 2. Approve the app permissions
@@ -83,7 +81,7 @@ Each org that receives their install link needs to:
 4. Run **Steps 1–7** below using their own store's GraphQL Explorer (Admin → Apps → GraphQL Explorer)
 5. Add the Checkout UI block in their Checkout Editor
 
-**Important:** Every value in the steps (function ID, PaymentCustomization ID, Shop ID, payment method handles) is per-store. They are not shared across orgs.
+**Important:** Every value in the steps (function ID, PaymentCustomization ID, Shop ID, payment method handles) is per-store. They are not shared across stores.
 
 ---
 
