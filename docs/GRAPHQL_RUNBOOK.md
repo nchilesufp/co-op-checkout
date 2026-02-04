@@ -152,9 +152,14 @@ query GetShopId {
 
 ## Step 5: Set Shop Config (for Checkout UI)
 
-Stores the same config on the Shop for the Checkout UI extension to read.
+Stores config on the Shop for the Checkout UI extension to read. This config includes **payment method handles** (not just names) because the Checkout UI extension's `PaymentOption` type only exposes `type` and `handle` — no `name` property.
 
-**Replace `YOUR_SHOP_ID` with the ID from Step 4.**
+Handles are opaque identifiers like `custom-manual-payment-<hash>`. To discover them:
+1. Run `shopify app dev`
+2. Add a `console.log` of `useSelectedPaymentOptions()` in your extension
+3. Select each payment method at checkout and note the handle from the console
+
+**Replace `YOUR_SHOP_ID` with the ID from Step 4. Replace the handles with the actual values from your store.**
 
 ```graphql
 mutation SetShopConfig {
@@ -165,7 +170,7 @@ mutation SetShopConfig {
         namespace: "$app:co-op-plant-payment"
         key: "configuration"
         type: "json"
-        value: "{\"coOpPaymentMethodNames\":[\"Charge to Co-op Account (PO)\"],\"plantPaymentMethodNames\":[\"Charge to Plant Account (PO)\"]}"
+        value: "{\"coOpPaymentMethodNames\":[\"Co-op\"],\"plantPaymentMethodNames\":[\"Plant\"],\"coOpPaymentMethodHandles\":[\"COOP_HANDLE_HERE\"],\"plantPaymentMethodHandles\":[\"PLANT_HANDLE_HERE\"]}"
       }
     ]
   ) {
@@ -182,7 +187,7 @@ mutation SetShopConfig {
 }
 ```
 
-**Important:** The `value` field of the `MetafieldsSetInput` objects passed to the `metafieldsSet` mutation must be identical across both mutations in Step 3 and Step 5.
+**Note:** Step 3 (PaymentCustomization config) and Step 5 (Shop config) now have **different** formats. Step 3 only needs names (the Function matches by name via GraphQL). Step 5 needs handles (the Checkout UI extension matches by handle). If you recreate payment methods, both configs need updating — Step 3 with new names, Step 5 with new handles.
 
 ---
 

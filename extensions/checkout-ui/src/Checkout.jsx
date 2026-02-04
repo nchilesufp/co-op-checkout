@@ -9,12 +9,6 @@ import {
   useInstructions,
 } from '@shopify/ui-extensions/checkout/preact';
 
-// Shopify manual payment method handles are slugified versions of the name.
-// e.g. "Co-op" → "co-op", "Plant" → "plant"
-function toHandle(name) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '').replace(/^-+/, '');
-}
-
 export default async () => {
   render(<Extension />, document.body);
 };
@@ -32,7 +26,7 @@ function Extension() {
     type: 'shop',
   });
 
-  let config = { coOpPaymentMethodNames: [], plantPaymentMethodNames: [] };
+  let config = { coOpPaymentMethodHandles: [], plantPaymentMethodHandles: [] };
   if (shopMetafields.length > 0 && shopMetafields[0].metafield?.value) {
     try {
       config = JSON.parse(shopMetafields[0].metafield.value);
@@ -41,19 +35,15 @@ function Extension() {
     }
   }
 
-  // Pre-compute handle sets from config names for matching
-  const coOpHandles = config.coOpPaymentMethodNames.map(toHandle);
-  const plantHandles = config.plantPaymentMethodNames.map(toHandle);
-
   // Detect which payment method is selected by comparing handles
   const selectedOptions = useSelectedPaymentOptions();
   let selectedPaymentType = null;
   for (const option of selectedOptions) {
-    if (coOpHandles.includes(option.handle)) {
+    if (config.coOpPaymentMethodHandles.includes(option.handle)) {
       selectedPaymentType = 'co-op';
       break;
     }
-    if (plantHandles.includes(option.handle)) {
+    if (config.plantPaymentMethodHandles.includes(option.handle)) {
       selectedPaymentType = 'plant';
       break;
     }
