@@ -1,6 +1,6 @@
-# Co-op/Plant Payment Setup - GraphQL Runbook
+# Co-op/Plant Payment - Install & Setup Guide
 
-This document provides GraphQL mutations and queries for setting up the Co-op/Plant Payment app.
+This document covers deploying the app and configuring it on each store.
 
 ---
 
@@ -20,24 +20,64 @@ This document provides GraphQL mutations and queries for setting up the Co-op/Pl
    - Create "Plant"
    - Names must **exactly match** what you put in the Step 3 config below
 
-2. **Install app** on the store via `npm run dev`
+2. **Install app** on the store:
+   - **Dev store:** `npm run dev` — auto-installs on the dev store defined in `shopify.app.toml`
+   - **Other orgs:** Deploy first (see Deploy section below), then install via the shared link
 
-3. **Open GraphiQL** by pressing `g` while dev server is running
+3. **Open GraphiQL:**
+   - **Dev store:** Press `g` while dev server is running
+   - **Other orgs:** Admin → Apps → click "GraphQL Explorer" (no dev server needed)
 
 ---
 
 ## Quick Setup Checklist
 
-1. [ ] Create manual payment methods ("Co-op", "Plant")
-2. [ ] Run `npm run dev` and install app
-3. [ ] Step 1: Get function ID
-4. [ ] Step 2: Create PaymentCustomization
-5. [ ] Step 3: Set PaymentCustomization config
-6. [ ] Step 4: Get Shop ID
-7. [ ] Step 5: Set Shop config
-8. [ ] Step 6: Create customer entitlement metafield definitions (via Admin UI)
-9. [ ] Step 7: Set customer entitlements (via Admin UI)
-10. [ ] Add Checkout UI block in Checkout Editor
+1. [ ] Deploy app (`npm run deploy`) — skip if only setting up the dev store
+2. [ ] Create manual payment methods ("Co-op", "Plant") on target store
+3. [ ] Install app on target store (dev store auto-installs; other orgs use install link)
+4. [ ] Step 1: Get function ID
+5. [ ] Step 2: Create PaymentCustomization
+6. [ ] Step 3: Set PaymentCustomization config
+7. [ ] Step 4: Get Shop ID
+8. [ ] Step 5: Set Shop config (requires handle discovery — see Step 5)
+9. [ ] Step 6: Create customer entitlement metafield definitions (via Admin UI)
+10. [ ] Step 7: Set customer entitlements (via Admin UI)
+11. [ ] Add Checkout UI block in Checkout Editor
+
+---
+
+## Deploy
+
+This is a **Custom Distribution** app — it is not on the Shopify App Store. Each target org installs it via a direct link generated in the Partner Dashboard.
+
+### One-time: push the app
+
+Run from the repo root:
+
+```bash
+npm run deploy
+```
+
+This pushes the app and its extensions to the Partner Dashboard. Run this whenever you change code and want the changes live for new installs.
+
+### Share the install link
+
+1. Go to **Partner Dashboard → Apps → Co-op/Plant Payment**
+2. Click **Custom distribution** (or **Share install link**)
+3. Copy the install URL
+4. Share it with each target org's Shopify Plus store owner
+
+### Per-org: install and configure
+
+Each org that receives the install link needs to:
+
+1. Open the install link in a browser while logged into their Shopify Admin
+2. Approve the app permissions
+3. Create the manual payment methods ("Co-op", "Plant") in their store
+4. Run **Steps 1–7** below using their own store's GraphQL Explorer (Admin → Apps → GraphQL Explorer)
+5. Add the Checkout UI block in their Checkout Editor
+
+**Important:** Every value in the steps (function ID, PaymentCustomization ID, Shop ID, payment method handles) is per-store. They are not shared across orgs.
 
 ---
 

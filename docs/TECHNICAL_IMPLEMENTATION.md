@@ -249,7 +249,7 @@ Key settings in `shopify.extension.toml`:
    - Custom distribution app with protected customer data access
 
 3. **Create PaymentCustomization instance** via GraphQL
-   - See GRAPHQL_RUNBOOK.md Step 2
+   - See INSTALL.md Step 2
 
 4. **Set config metafields** via GraphQL
    - PaymentCustomization metafield (Step 3)

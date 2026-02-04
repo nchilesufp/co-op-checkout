@@ -20,4 +20,4 @@ scopes = "read_customers, write_customers, write_payment_customizations"
 redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
 
 # Note: Customer entitlement metafields use the "custom" namespace (merchant-owned)
-# so they persist after app uninstall. Create definitions via Admin UI (see GRAPHQL_RUNBOOK.md Step 6)
+# so they persist after app uninstall. Create definitions via Admin UI (see docs/INSTALL.md Step 6)

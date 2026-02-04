@@ -32,7 +32,7 @@ When prompted, select your Plus sandbox store.
 
 ### 3. Configure the App
 
-See [docs/GRAPHQL_RUNBOOK.md](docs/GRAPHQL_RUNBOOK.md) for complete setup instructions including:
+See [docs/INSTALL.md](docs/INSTALL.md) for complete setup instructions including:
 - Creating manual payment methods
 - Configuring metafields via GraphQL
 - Setting customer entitlements
@@ -55,4 +55,4 @@ npm run deploy
 ## Documentation
 
 - [Technical Implementation](docs/TECHNICAL_IMPLEMENTATION.md) - Architecture and implementation details
-- [GraphQL Runbook](docs/GRAPHQL_RUNBOOK.md) - Setup mutations and queries
+- [Install & Setup Guide](docs/INSTALL.md) - Deploy, install, and configure
