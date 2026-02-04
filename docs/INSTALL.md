@@ -60,16 +60,22 @@ npm run deploy
 
 This pushes the app and its extensions to the Partner Dashboard. Run this whenever you change code and want the changes live for new installs.
 
-### Share the install link
+### Generate an install link per org
+
+Custom distribution install links are scoped to a **single Plus organization**. A separate link must be generated for each target org (the app code is the same — only the link differs).
+
+For each target org:
 
 1. Go to **Partner Dashboard → Apps → Co-op/Plant Payment**
 2. Click **Custom distribution** (or **Share install link**)
-3. Copy the install URL
-4. Share it with each target org's Shopify Plus store owner
+3. Enter one of that org's store domains (e.g., `their-store.myshopify.com`)
+4. Leave **"Allow multi-store installs for one Plus organization"** checked if that org has multiple stores that need the app
+5. Click **Generate link**
+6. Share the generated link with that org's store owner
 
 ### Per-org: install and configure
 
-Each org that receives the install link needs to:
+Each org that receives their install link needs to:
 
 1. Open the install link in a browser while logged into their Shopify Admin
 2. Approve the app permissions
