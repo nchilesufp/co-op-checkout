@@ -169,8 +169,8 @@ function Extension() {
           placeholder="Select your Customer Code"
           onChange={(e) => { setCustomerCode(/** @type {any} */ (e.currentTarget).value); setValidationError(null); }}
         >
-          {CUSTOMER_CODES.map(({ code, name }) => (
-            <s-option key={code} value={code}>{code} - {name}</s-option>
+          {CUSTOMER_CODES.map(({ code }) => (
+            <s-option key={code} value={code}>{code}</s-option>
           ))}
         </s-select>
       ) : (
