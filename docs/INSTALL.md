@@ -21,20 +21,19 @@ This document covers deploying the app and configuring it on each store.
    - Names must **exactly match** what you put in the Step 3 config below
 
 2. **Install app** on the store:
-   - **Dev store:** `npm run dev` — auto-installs on the dev store defined in `shopify.app.toml`
-   - **Other orgs:** Deploy first (see Deploy section below), then install via the shared link
+   - Run `npm run dev` and select the target store when prompted
+   - The app auto-installs on whichever store you select
 
 3. **Open GraphiQL:**
-   - **Dev store:** Press `g` while dev server is running
-   - **Other orgs:** Admin → Apps → click "GraphQL Explorer" (no dev server needed)
+   - Press `g` while the dev server is running
 
 ---
 
 ## Quick Setup Checklist
 
-1. [ ] Deploy app (`npm run deploy`) — skip if only setting up the dev store
-2. [ ] Create manual payment methods ("Co-op", "Plant") on target store
-3. [ ] Install app on target store (dev store auto-installs; other orgs use install link)
+1. [ ] Create manual payment methods ("Co-op", "Plant") on target store
+2. [ ] Run `npm run dev`, select target store (installs app automatically)
+3. [ ] Press `g` to open GraphiQL
 4. [ ] Step 1: Get function ID
 5. [ ] Step 2: Create PaymentCustomization
 6. [ ] Step 3: Set PaymentCustomization config
@@ -48,7 +47,7 @@ This document covers deploying the app and configuring it on each store.
 
 ## Deploy
 
-This is a **Custom Distribution** app — it is not on the Shopify App Store. Installation is done via a link generated in the Partner Dashboard.
+This is a **Custom Distribution** app — it is not on the Shopify App Store.
 
 ### Push the app
 
@@ -60,26 +59,27 @@ npm run deploy
 
 This pushes the app and its extensions to the Partner Dashboard. Run this whenever you change code and want the changes available for install.
 
-### Generate the install link
+### Installing on additional stores (same org)
 
-1. Go to **Partner Dashboard → Apps → Co-op/Plant Payment**
+If you need to install on additional stores within the same Plus organization:
+
+1. Go to **Partner Dashboard → Apps → Co-op Checkout**
 2. Click **Custom distribution**
-3. Enter the target store's `myshopify.com` domain
-4. Leave **"Allow multi-store installs for one Plus organization"** checked if that org has multiple stores that need the app
+3. Enter a store's `myshopify.com` domain from that org
+4. Check **"Allow multi-store installs for one Plus organization"**
 5. Click **Generate link**
-6. Share the generated link with that store's owner
+6. Share the link — any store in that org can use it to install
 
-**Note:** A custom distribution app produces one install link, scoped to the Plus organization of the store domain you entered. If you need to install on stores in a **different** Plus organization, contact Shopify Partner Support — the mechanism for multi-org distribution of a single app is not documented in the public developer docs.
+After installation, you still need to run `npm run dev` pointed at each store to configure it (Steps 1–7).
 
-### Per-store: install and configure
+### Installing on a different Plus organization
 
-Each store that receives the install link needs to:
+Each Plus organization requires its own app in the Partner Dashboard:
 
-1. Open the install link in a browser while logged into their Shopify Admin
-2. Approve the app permissions
-3. Create the manual payment methods ("Co-op", "Plant") in their store
-4. Run **Steps 1–7** below using their own store's GraphQL Explorer (Admin → Apps → GraphQL Explorer)
-5. Add the Checkout UI block in their Checkout Editor
+1. Create a new app in Partner Dashboard
+2. Clone this repo or copy the code
+3. Run `npm run deploy` to push to the new app
+4. Run `npm run dev` and select the target store to install and configure
 
 **Important:** Every value in the steps (function ID, PaymentCustomization ID, Shop ID, payment method handles) is per-store. They are not shared across stores.
 
