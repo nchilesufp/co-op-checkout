@@ -77,9 +77,10 @@ After installation, you still need to run `npm run dev` pointed at each store to
 Each Plus organization requires its own app in the Partner Dashboard:
 
 1. Create a new app in Partner Dashboard
-2. Clone this repo or copy the code
-3. Run `npm run deploy` to push to the new app
-4. Run `npm run dev` and select the target store to install and configure
+2. Clone this repo to a new directory
+3. Update `shopify.app.toml` with the new app's `client_id` (found in Partner Dashboard → Apps → your new app → Overview)
+4. Run `npm run deploy` to push extensions to the new app
+5. Run `npm run dev` and select the target store to install and configure
 
 **Important:** Every value in the steps (function ID, PaymentCustomization ID, Shop ID, payment method handles) is per-store. They are not shared across stores.
 
