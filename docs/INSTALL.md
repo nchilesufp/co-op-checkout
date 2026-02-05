@@ -7,7 +7,7 @@ This document covers deploying the app and configuring it on each store.
 ## Requirements
 
 - **Shopify Plus** store (required for Payment Customization Functions)
-- **Custom distribution** app with protected customer data access
+- **Custom distribution** app with due to customer data access requirements
 - Manual payment methods created in Shopify Admin
 
 ---
@@ -21,19 +21,20 @@ This document covers deploying the app and configuring it on each store.
    - Names must **exactly match** what you put in the Step 3 config below
 
 2. **Install app** on the store:
-   - Run `npm run dev` and select the target store when prompted
-   - The app auto-installs on whichever store you select
+   - **Dev stores:** Run `npm run dev` and select the target store when prompted (auto-installs)
+   - **Production stores in other orgs:** Use the custom distribution install link
 
 3. **Open GraphiQL:**
-   - Press `g` while the dev server is running
+   - **Dev stores:** Press `g` while the dev server is running
+   - **Production stores:** Install a GraphQL app (e.g., "Shopify GraphiQL App") from the App Store
 
 ---
 
 ## Quick Setup Checklist
 
 1. [ ] Create manual payment methods ("Co-op", "Plant") on target store
-2. [ ] Run `npm run dev`, select target store (installs app automatically)
-3. [ ] Press `g` to open GraphiQL
+2. [ ] Install app (dev: `npm run dev`; production: use install link)
+3. [ ] Open GraphiQL (dev: press `g`; production: use GraphQL app)
 4. [ ] Step 1: Get function ID
 5. [ ] Step 2: Create PaymentCustomization
 6. [ ] Step 3: Set PaymentCustomization config
@@ -110,6 +111,18 @@ shopify app config use <org-name>
 Each config file should be committed to the repo. Add org-specific configs to `.gitignore` if you don't want them shared.
 
 **Important:** Every value in the steps (function ID, PaymentCustomization ID, Shop ID, payment method handles) is per-store. They are not shared across stores.
+
+### Configuring stores without CLI access
+
+The Shopify CLI can only connect to development stores in your Partner account. For production stores in other Plus organizations, use a GraphQL app instead:
+
+1. Install a GraphQL app on the target store (e.g., "Shopify GraphiQL App" from the App Store)
+2. Run Steps 1–5 GraphQL queries/mutations directly in that app
+3. For **handle discovery** (Step 5), either:
+   - Deploy with `console.log` enabled in `Checkout.jsx`, go through checkout on the production store, and check browser console (F12) for the handles
+   - Or create a dev store in your Partner account to test handle discovery first
+
+This approach works for any store where you have admin access but can't run `shopify app dev`.
 
 ---
 
