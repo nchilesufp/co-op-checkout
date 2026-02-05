@@ -1,23 +1,19 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "7bf3be27f0bbedcefafec8ba4a7c7785"
-name = "co-op-plant-payment"
+client_id = "5f8c4a5ce5aba61139ef7cfbee32e781"
+name = "Co-op Checkout"
 application_url = "https://shopify.dev/apps/default-app-home"
 embedded = true
 
 [build]
 automatically_update_urls_on_dev = true
-dev_store_url = "dev-plus-store-15.myshopify.com"
 
 [webhooks]
-api_version = "2025-10"
+api_version = "2026-04"
 
 [access_scopes]
-# Required for reading customer metafields and managing payment customizations
-scopes = "read_customers, write_customers, write_payment_customizations"
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_customers,write_customers,write_payment_customizations"
 
 [auth]
 redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
-
-# Note: Customer entitlement metafields use the "custom" namespace (merchant-owned)
-# so they persist after app uninstall. Create definitions via Admin UI (see docs/INSTALL.md Step 6)

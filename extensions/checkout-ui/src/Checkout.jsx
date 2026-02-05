@@ -1,6 +1,6 @@
 import '@shopify/ui-extensions/preact';
 import { render } from 'preact';
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import {
   useAppMetafields,
   useSelectedPaymentOptions,
@@ -54,7 +54,7 @@ function Extension() {
   const [customerCode, setCustomerCode] = useState('');
   const [plantNumber, setPlantNumber] = useState('');
   const [notes, setNotes] = useState('');
-  const [validationError, setValidationError] = useState(null);
+  const hasAttemptedProceed = useRef(false);
 
   // Read config from Shop metafield (declared in shopify.extension.toml)
   const shopMetafields = useAppMetafields({
@@ -74,6 +74,11 @@ function Extension() {
 
   // Detect which payment method is selected by looking up its handle in config
   const selectedOptions = useSelectedPaymentOptions();
+  /* HANDLE DISCOVERY: Click "Co-op" in checkout, copy the handle. Then click "Plant", copy that handle.
+  if (selectedOptions.length > 0) {
+    console.log('⬇️ COPY THIS HANDLE for the payment method you just clicked:');
+    console.log(selectedOptions[0].handle);
+  } */
   let selectedPaymentType = null;
   for (const option of selectedOptions) {
     if (paymentMethodHandles[option.handle]) {
@@ -91,25 +96,33 @@ function Extension() {
       return { behavior: 'allow' };
     }
 
-    if (selectedPaymentType === 'co-op' && !customerCode.trim()) {
-      setValidationError('Customer Code is required for Co-op payment.');
-      return {
-        behavior: 'block',
-        reason: 'Missing Co-op Customer Code',
-        errors: [{ message: 'Please enter your Co-op Customer Code to proceed.' }],
-      };
+    const needsCoOpCode = selectedPaymentType === 'co-op' && !customerCode.trim();
+    const needsPlantNumber = selectedPaymentType === 'plant' && !plantNumber.trim();
+
+    if (needsCoOpCode || needsPlantNumber) {
+      // On first intercept call, block silently (no error shown on initial load)
+      // On subsequent calls, show the error message
+      if (!hasAttemptedProceed.current) {
+        hasAttemptedProceed.current = true;
+        return { behavior: 'block', reason: 'Required fields missing' };
+      }
+
+      if (needsCoOpCode) {
+        return {
+          behavior: 'block',
+          reason: 'Missing Co-op Customer Code',
+          errors: [{ message: 'Please select your Customer Code to proceed.' }],
+        };
+      }
+      if (needsPlantNumber) {
+        return {
+          behavior: 'block',
+          reason: 'Missing Plant Number',
+          errors: [{ message: 'Please enter your Plant Number to proceed.' }],
+        };
+      }
     }
 
-    if (selectedPaymentType === 'plant' && !plantNumber.trim()) {
-      setValidationError('Plant Number is required for Plant payment.');
-      return {
-        behavior: 'block',
-        reason: 'Missing Plant Number',
-        errors: [{ message: 'Please enter your Plant Number to proceed.' }],
-      };
-    }
-
-    setValidationError(null);
     return { behavior: 'allow' };
   });
 
@@ -156,18 +169,12 @@ function Extension() {
     <s-stack gap="base">
       <s-text type="strong">{isCoOp ? 'Co-op Account Details' : 'Plant Account Details'}</s-text>
 
-      {validationError && (
-        <s-banner tone="critical">
-          <s-text>{validationError}</s-text>
-        </s-banner>
-      )}
-
       {isCoOp ? (
         <s-select
           label="Customer Code"
           value={customerCode}
           placeholder="Select your Customer Code"
-          onChange={(e) => { setCustomerCode(/** @type {any} */ (e.currentTarget).value); setValidationError(null); }}
+          onChange={(e) => setCustomerCode(/** @type {any} */ (e.currentTarget).value)}
         >
           {CUSTOMER_CODES.map(({ code }) => (
             <s-option key={code} value={code}>{code}</s-option>
@@ -177,7 +184,7 @@ function Extension() {
         <s-text-field
           label="Plant #"
           value={plantNumber}
-          onInput={(e) => { setPlantNumber(/** @type {any} */ (e.currentTarget).value); setValidationError(null); }}
+          onInput={(e) => setPlantNumber(/** @type {any} */ (e.currentTarget).value)}
         />
       )}
 

@@ -42,7 +42,7 @@ This document covers deploying the app and configuring it on each store.
 8. [ ] Step 5: Set Shop config (requires handle discovery — see Step 5)
 9. [ ] Step 6: Create customer entitlement metafield definitions (via Admin UI)
 10. [ ] Step 7: Set customer entitlements (via Admin UI)
-11. [ ] Add Checkout UI block in Checkout Editor
+11. [ ] Add Checkout UI block in Checkout Editor and enable "Block checkout progress"
 
 ---
 
@@ -422,3 +422,26 @@ query GetShopConfig {
 1. Verify customer is logged in
 2. Check customer's entitlement metafield values are `"true"`
 3. Verify function is working (check function logs)
+
+### Validation not blocking checkout (can proceed without required fields)
+
+The `block_progress` capability must be enabled **both** in the extension config (`shopify.extension.toml`) and in the Checkout Editor for the placed block:
+
+1. Open **Checkout Editor** (Sales channels → Online Store → Checkout → Customize)
+2. Click on the **Co-op Checkout** block you placed
+3. In the block settings panel, find **"Block checkout progress"** or similar toggle
+4. Enable it and **Save** the checkout configuration
+
+Without this setting enabled in Checkout Editor, the extension can render fields but cannot block checkout progress.
+
+### Extension appears twice / shows without being placed in Checkout Editor
+
+The **dev-console preview** (`<tunnel>/extensions/dev-console`) auto-injects extensions for testing purposes. This is separate from the Checkout Editor placement:
+
+- **Dev-console preview:** Extension renders automatically (for development iteration)
+- **Real checkout:** Extension only renders where you place it in Checkout Editor
+
+To verify production behavior:
+1. Deploy with `npm run deploy`
+2. Test via actual checkout (not the dev-console preview) — add items to cart, go to checkout normally
+3. The extension will only appear if you've placed the block in the Checkout Editor
