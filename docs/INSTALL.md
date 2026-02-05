@@ -74,13 +74,40 @@ After installation, you still need to run `npm run dev` pointed at each store to
 
 ### Installing on a different Plus organization
 
-Each Plus organization requires its own app in the Partner Dashboard:
+Each Plus organization requires its own app in the Partner Dashboard. Use named config files to manage multiple apps from the same repo.
 
-1. Create a new app in Partner Dashboard
-2. Clone this repo to a new directory
-3. Update `shopify.app.toml` with the new app's `client_id` (found in Partner Dashboard → Apps → your new app → Overview)
-4. Run `npm run deploy` to push extensions to the new app
-5. Run `npm run dev` and select the target store to install and configure
+**One-time setup for a new org:**
+
+```bash
+# Create a new config linked to a new/existing app in Partner Dashboard
+shopify app config link --config <org-name>
+# Example: shopify app config link --config ufp-plus
+```
+
+This creates `shopify.app.<org-name>.toml` with that app's `client_id`.
+
+**Deploy and install:**
+
+```bash
+# Deploy to that org's app
+shopify app deploy -c <org-name>
+
+# Run dev server for that org
+shopify app dev -c <org-name>
+```
+
+**Switch default config (optional):**
+
+```bash
+# Set a config as the default (so you don't need -c flag)
+shopify app config use <org-name>
+```
+
+**Config files:**
+- `shopify.app.toml` — default config (UFP Apps org)
+- `shopify.app.<org-name>.toml` — additional org configs
+
+Each config file should be committed to the repo. Add org-specific configs to `.gitignore` if you don't want them shared.
 
 **Important:** Every value in the steps (function ID, PaymentCustomization ID, Shop ID, payment method handles) is per-store. They are not shared across stores.
 
