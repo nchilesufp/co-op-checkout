@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "5f8c4a5ce5aba61139ef7cfbee32e781"
-name = "Dev Co-op Checkout"
+client_id = "824dabddf80ffcbbb0989139acf1a37b"
+name = "Deckorators Co-op Checkout"
 application_url = "https://shopify.dev/apps/default-app-home"
 embedded = true
 

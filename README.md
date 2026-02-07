@@ -4,55 +4,54 @@ A Shopify extension-only app that enables B2B buyers to checkout using Co-op or 
 
 ## Features
 
-- **Payment Customization Function**: Hides/shows Co-op and Plant payment methods based on customer entitlements
-- **Checkout UI Extension**: Displays required input fields (Customer Code or Plant #) when Co-op/Plant payment is selected
+- **Payment Customization Function**: Hides Co-op and Plant payment methods for non-entitled customers (guests and customers without entitlement metafields)
+- **Checkout UI Extension**: Displays required input fields (Customer Code dropdown or Plant # text field) when Co-op/Plant payment is selected
 
 ## Requirements
 
 - **Shopify Plus** store (required for Payment Customization Functions and Checkout UI block targets)
 - Node.js installed
-- Shopify Partner account with a Plus sandbox store
+- Shopify Partner account
 
-## Getting Started
+## How It Works
 
-### 1. Create a Plus Sandbox Store
+1. **Manual payment methods** named "Co-op" and "Plant" are created in Shopify Admin
+2. **Customer entitlements** are stored as boolean metafields (`custom.co_op`, `custom.plant`)
+3. **Payment Customization Function** runs at checkout and hides payment methods the customer isn't entitled to
+4. **Checkout UI Extension** renders input fields when an entitled customer selects Co-op or Plant
 
-This app requires Shopify Plus features. In your Partner Dashboard:
-1. Go to Stores > Add store
-2. Select "Development store"
-3. Choose "Create a store to test and build" with **Shopify Plus** features
-
-### 2. Start Development
+## Development
 
 ```bash
+# Start dev server
 npm run dev
-```
-
-When prompted, select your Plus sandbox store.
-
-### 3. Configure the App
-
-See [docs/INSTALL.md](docs/INSTALL.md) for complete setup instructions including:
-- Creating manual payment methods
-- Configuring metafields via GraphQL
-- Setting customer entitlements
-
-## Development Commands
-
-```bash
-# Start dev server (select your Plus store when prompted)
-npm run dev
-
-# Build extensions
-npm run build
 
 # Deploy to production
-npm run deploy
+shopify app deploy -c <org-name>
+```
 
-# Open GraphiQL (press 'g' while dev server is running)
+## Multi-Org Deployment
+
+Each Shopify Plus organization requires its own app. Use config files:
+
+```bash
+# Link to a new org
+shopify app config link --config deckorators
+
+# Deploy to that org
+shopify app deploy -c deckorators
 ```
 
 ## Documentation
 
 - [Technical Implementation](docs/TECHNICAL_IMPLEMENTATION.md) - Architecture and implementation details
-- [Install & Setup Guide](docs/INSTALL.md) - Deploy, install, and configure
+- [Install & Setup Guide](docs/INSTALL.md) - Deploy, install, and configure per-store
+- [Customer Codes](docs/customer-codes.md) - List of valid customer codes for Co-op payment
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `extensions/payment-customization/src/cart_payment_methods_transform_run.js` | Function that hides payment methods |
+| `extensions/checkout-ui/src/Checkout.jsx` | UI that renders input fields at checkout |
+| `shopify.app.<org>.toml` | Per-org app configuration |

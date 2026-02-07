@@ -22,8 +22,3 @@ target = "purchase.checkout.block.render"
 [extensions.capabilities]
 api_access = true
 block_progress = true
-
-# Shop metafield for configuration (payment method names)
-[[extensions.metafields]]
-namespace = "$app:co-op-plant-payment"
-key = "configuration"

@@ -2,10 +2,10 @@ import '@shopify/ui-extensions/preact';
 import { render } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import {
-  useAppMetafields,
   useSelectedPaymentOptions,
   useBuyerJourneyIntercept,
   useApplyAttributeChange,
+  useApplyNoteChange,
   useInstructions,
 } from '@shopify/ui-extensions/checkout/preact';
 
@@ -56,29 +56,17 @@ function Extension() {
   const [notes, setNotes] = useState('');
   const hasAttemptedProceed = useRef(false);
 
-  // Read config from Shop metafield (declared in shopify.extension.toml)
-  const shopMetafields = useAppMetafields({
-    namespace: '$app:co-op-plant-payment',
-    key: 'configuration',
-    type: 'shop',
-  });
+  // Payment method handles are hardcoded for reliability.
+  // These only change if payment methods are deleted and recreated in Admin.
+  // Co-op handle: custom-manual-payment-a10cd6c44f627f6a0a3be7f57cd3baad
+  // Plant handle: custom-manual-payment-414957dd431505fb5d4dadc40c7554ef
+  const paymentMethodHandles = {
+    'custom-manual-payment-a10cd6c44f627f6a0a3be7f57cd3baad': 'co-op',
+    'custom-manual-payment-414957dd431505fb5d4dadc40c7554ef': 'plant',
+  };
 
-  let paymentMethodHandles = {};
-  if (shopMetafields.length > 0 && shopMetafields[0].metafield?.value) {
-    try {
-      paymentMethodHandles = JSON.parse(shopMetafields[0].metafield.value).paymentMethodHandles || {};
-    } catch (e) {
-      // paymentMethodHandles stays as empty object
-    }
-  }
-
-  // Detect which payment method is selected by looking up its handle in config
+  // Detect which payment method is selected by looking up its handle
   const selectedOptions = useSelectedPaymentOptions();
-  /* HANDLE DISCOVERY: Click "Co-op" in checkout, copy the handle. Then click "Plant", copy that handle.
-  if (selectedOptions.length > 0) {
-    console.log('⬇️ COPY THIS HANDLE for the payment method you just clicked:');
-    console.log(selectedOptions[0].handle);
-  } */
   let selectedPaymentType = null;
   for (const option of selectedOptions) {
     if (paymentMethodHandles[option.handle]) {
@@ -89,6 +77,22 @@ function Extension() {
 
   const instructions = useInstructions();
   const applyAttributeChange = useApplyAttributeChange();
+  const applyNoteChange = useApplyNoteChange();
+
+  // Track previous payment type to detect switches
+  const prevPaymentType = useRef(selectedPaymentType);
+
+  // Reset form fields when switching between Co-op and Plant
+  useEffect(() => {
+    if (prevPaymentType.current !== selectedPaymentType) {
+      if (selectedPaymentType === 'co-op') {
+        setPlantNumber('');
+      } else if (selectedPaymentType === 'plant') {
+        setCustomerCode('');
+      }
+      prevPaymentType.current = selectedPaymentType;
+    }
+  }, [selectedPaymentType]);
 
   // Validate required fields before checkout can proceed
   useBuyerJourneyIntercept(({ canBlockProgress }) => {
@@ -130,26 +134,43 @@ function Extension() {
   useEffect(() => {
     if (!selectedPaymentType || !instructions.attributes.canUpdateAttributes) return;
 
-    applyAttributeChange({ type: 'updateAttribute', key: 'co_op_type', value: selectedPaymentType });
+    // Format type as sentence case: "Co-op" or "Plant"
+    const formattedType = selectedPaymentType === 'co-op' ? 'Co-op' : 'Plant';
+    applyAttributeChange({ type: 'updateAttribute', key: 'Payment Type', value: formattedType });
 
-    if (selectedPaymentType === 'co-op' && customerCode) {
-      applyAttributeChange({ type: 'updateAttribute', key: 'co_op_customer_code', value: customerCode });
+    if (selectedPaymentType === 'co-op') {
+      // Set Customer Code, clear Plant Number
+      if (customerCode) {
+        const customerEntry = CUSTOMER_CODES.find((c) => c.code === customerCode);
+        const formattedCode = customerEntry ? `${customerCode} ${customerEntry.name}` : customerCode;
+        applyAttributeChange({ type: 'updateAttribute', key: 'Customer Code', value: formattedCode });
+      }
+      applyAttributeChange({ type: 'updateAttribute', key: 'Plant Number', value: '' });
     }
-    if (selectedPaymentType === 'plant' && plantNumber) {
-      applyAttributeChange({ type: 'updateAttribute', key: 'co_op_plant_number', value: plantNumber });
+
+    if (selectedPaymentType === 'plant') {
+      // Set Plant Number, clear Customer Code
+      if (plantNumber) {
+        applyAttributeChange({ type: 'updateAttribute', key: 'Plant Number', value: plantNumber });
+      }
+      applyAttributeChange({ type: 'updateAttribute', key: 'Customer Code', value: '' });
     }
-    if (notes) {
-      applyAttributeChange({ type: 'updateAttribute', key: 'co_op_notes', value: notes });
-    }
-  }, [selectedPaymentType, customerCode, plantNumber, notes]);
+  }, [selectedPaymentType, customerCode, plantNumber]);
+
+  // Sync notes to standard cart note (shows as "Notes from customer" on order)
+  useEffect(() => {
+    if (!selectedPaymentType) return;
+    applyNoteChange({ type: 'updateNote', note: notes });
+  }, [notes, selectedPaymentType]);
 
   // Clear attributes when switching away from co-op/plant
   useEffect(() => {
     if (selectedPaymentType || !instructions.attributes.canUpdateAttributes) return;
 
-    ['co_op_type', 'co_op_customer_code', 'co_op_plant_number', 'co_op_notes'].forEach((key) => {
+    ['Payment Type', 'Customer Code', 'Plant Number'].forEach((key) => {
       applyAttributeChange({ type: 'updateAttribute', key, value: '' });
     });
+    applyNoteChange({ type: 'updateNote', note: '' });
   }, [selectedPaymentType]);
 
   // Nothing to render if no co-op/plant method selected
