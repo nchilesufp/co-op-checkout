@@ -18,7 +18,7 @@ This document covers deploying the app and configuring it on each store.
    - Settings → Payments → Manual payment methods
    - Create "Co-op"
    - Create "Plant"
-   - Names must **exactly match** what you put in the Step 3 config below
+   - Names must **exactly match** the hardcoded names in the function source: `Co-op` and `Plant`
 
 2. **Install app** on the store:
    - **Dev stores:** Run `npm run dev` and select the target store when prompted (auto-installs)
@@ -37,12 +37,10 @@ This document covers deploying the app and configuring it on each store.
 3. [ ] Open GraphiQL (dev: press `g`; production: use GraphQL app)
 4. [ ] Step 1: Get function ID
 5. [ ] Step 2: Create PaymentCustomization
-6. [ ] Step 3: Set PaymentCustomization config
-7. [ ] Step 4: Get Shop ID
-8. [ ] Step 5: Set Shop config (requires handle discovery — see Step 5)
-9. [ ] Step 6: Create customer entitlement metafield definitions (via Admin UI)
-10. [ ] Step 7: Set customer entitlements (via Admin UI)
-11. [ ] Add Checkout UI block in Checkout Editor and enable "Block checkout progress"
+6. [ ] Step 3: Import Shopify Flows
+7. [ ] Step 4: Create customer entitlement metafield definitions (via Admin UI)
+8. [ ] Step 5: Set customer entitlements (via Admin UI)
+9. [ ] Add Checkout UI block in Checkout Editor and enable "Block checkout progress"
 
 ---
 
@@ -71,7 +69,7 @@ If you need to install on additional stores within the same Plus organization:
 5. Click **Generate link**
 6. Share the link — any store in that org can use it to install
 
-After installation, you still need to run `npm run dev` pointed at each store to configure it (Steps 1–7).
+After installation, run the setup steps below for each store.
 
 ### Installing on a different Plus organization
 
@@ -110,19 +108,16 @@ shopify app config use <org-name>
 
 Each config file should be committed to the repo. Add org-specific configs to `.gitignore` if you don't want them shared.
 
-**Important:** Every value in the steps (function ID, PaymentCustomization ID, Shop ID, payment method handles) is per-store. They are not shared across stores.
+**Important:** Every value in the steps (function ID, PaymentCustomization ID) is per-store. They are not shared across stores.
+
+**Note on payment method handles:** The Checkout UI extension matches payment methods by opaque handle. Handles are hardcoded in `extensions/checkout-ui/src/Checkout.jsx`. When setting up a new store, you must discover the handles for that store's payment methods, update the file, and redeploy. See [TECHNICAL_IMPLEMENTATION.md Section 5](TECHNICAL_IMPLEMENTATION.md#5-setup--install-flow) for the handle discovery process.
 
 ### Configuring stores without CLI access
 
 The Shopify CLI can only connect to development stores in your Partner account. For production stores in other Plus organizations, use a GraphQL app instead:
 
 1. Install a GraphQL app on the target store (e.g., "Shopify GraphiQL App" from the App Store)
-2. Run Steps 1–5 GraphQL queries/mutations directly in that app
-3. For **handle discovery** (Step 5), either:
-   - Deploy with `console.log` enabled in `Checkout.jsx`, go through checkout on the production store, and check browser console (F12) for the handles
-   - Or create a dev store in your Partner account to test handle discovery first
-
-This approach works for any store where you have admin access but can't run `shopify app dev`.
+2. Run Steps 1–2 GraphQL queries/mutations directly in that app
 
 ---
 
@@ -185,121 +180,39 @@ mutation CreatePaymentCustomization {
 
 ---
 
-## Step 3: Set PaymentCustomization Config
+## Step 3: Import Shopify Flows
 
-Configures which payment method names are Co-op vs Plant.
+Two Shopify Flows automate order data handling. Import both on the target store.
 
-**Replace `YOUR_PAYMENT_CUSTOMIZATION_ID` with the ID from Step 2.**
+Flow files are in `docs/shopify-flows/`.
 
-```graphql
-mutation SetPaymentCustomizationConfig {
-  metafieldsSet(
-    metafields: [
-      {
-        ownerId: "YOUR_PAYMENT_CUSTOMIZATION_ID"
-        namespace: "$app:payment-customization"
-        key: "function-configuration"
-        type: "json"
-        value: "{\"coOpPaymentMethodNames\":[\"Co-op\"],\"plantPaymentMethodNames\":[\"Plant\"]}"
-      }
-    ]
-  ) {
-    metafields {
-      id
-      namespace
-      key
-    }
-    userErrors {
-      field
-      message
-    }
-  }
-}
-```
+**To import each flow:**
+1. Go to **Settings → Flow**
+2. Click **Import**
+3. Select the `.flow` file
+4. Review and activate
+
+### Flow 1: Assign Co-op and Plant metafields and MSR tags
+
+**File:** `docs/shopify-flows/Assign Co-op and Plant metafields and MSR tags.flow`
+
+Runs on order creation. For Co-op orders: copies the Customer Code attribute to `custom.co_op_customer_code` and sets `checkoutcustomizer.customercode_v1` to the first 4 chars of the code. For Plant orders: copies the Plant Number to `custom.plant_number`. For all other orders: sets `checkoutcustomizer.customercode_v1 = "CAHM"`. Every order gets the "Send to MSR" tag.
+
+### Flow 2: Initialize entitlements for new customers
+
+**File:** `docs/shopify-flows/Set Co-op or Plant metafield to false for new customers.flow`
+
+Runs on customer creation. Sets `custom.co_op` and `custom.plant` to `false` for any new customer that doesn't already have those metafields set to `true`.
+
+**Note:** The `checkoutcustomizer.customercode_v1` metafield and "Send to MSR" tag set by Flow 1 are specific to the Deckorators MSR integration. Other stores may need to modify or remove those actions.
 
 ---
 
-## Step 4: Get Shop ID
-
-Gets the Shop ID needed for the Checkout UI config.
-
-```graphql
-query GetShopId {
-  shop {
-    id
-    name
-  }
-}
-```
-
-**Save the `id`** (e.g., `gid://shopify/Shop/72973123761`)
-
----
-
-## Step 5: Set Shop Config (for Checkout UI)
-
-Stores config on the Shop for the Checkout UI extension to read. This config uses a **handle-to-type map** because the Checkout UI extension's `PaymentOption` type only exposes `type` and `handle` — no `name` property. Each key is a payment method handle; the value is `"co-op"` or `"plant"`.
-
-Handles are opaque identifiers like `custom-manual-payment-<hash>`. To discover them:
-1. Run `shopify app dev`
-2. Add `console.log('selectedOptions:', useSelectedPaymentOptions());` after line 76 in `extensions/checkout-ui/src/Checkout.jsx`
-3. Go to `<tunnel>/extensions/dev-console` (the tunnel URL is shown in your terminal) and use the preview link from there — **do not navigate to checkout manually**, as the Checkout Editor caches old tunnel URLs
-4. Select each payment method at checkout and note the handle from the browser dev console (F12)
-5. Remove the console.log when done
-
-**Replace `YOUR_SHOP_ID` with the ID from Step 4. Replace the handle placeholders with actual values from your store.**
-
-```graphql
-mutation SetShopConfig {
-  metafieldsSet(
-    metafields: [
-      {
-        ownerId: "YOUR_SHOP_ID"
-        namespace: "$app:co-op-plant-payment"
-        key: "configuration"
-        type: "json"
-        value: "{\"paymentMethodHandles\":{\"COOP_HANDLE_HERE\":\"co-op\",\"PLANT_HANDLE_HERE\":\"plant\"}}"
-      }
-    ]
-  ) {
-    metafields {
-      id
-      namespace
-      key
-    }
-    userErrors {
-      field
-      message
-    }
-  }
-}
-```
-
-**Note:** Step 3 (PaymentCustomization config) and Step 5 (Shop config) have **different** formats by design. Step 3 maps payment method names to roles (the Function matches by name via GraphQL). Step 5 maps payment method handles to roles (the Checkout UI extension can only see handles). If you recreate payment methods, re-run Step 3 with new names and Step 5 with new handles.
-
----
-
-## When to Re-run Steps
-
-| Step | What it does | Re-run when... |
-|------|--------------|----------------|
-| **Step 1** | Get function ID | Never (ID is stable unless you delete/recreate the function extension) |
-| **Step 2** | Create PaymentCustomization | Never (once created, it exists). Only re-run if you deleted it. |
-| **Step 3** | Set PaymentCustomization config | **Payment method names change** in Shopify Admin |
-| **Step 4** | Get Shop ID | Never (Shop ID never changes) |
-| **Step 5** | Set Shop config | **Payment methods deleted/recreated** (handles change) |
-| **Step 6** | Create metafield definitions | Never (once created, they exist) |
-| **Step 7** | Set customer entitlements | Per-customer, as needed |
-
-**Key point:** Step 3 names must **exactly match** the payment method names in Shopify Admin (Settings → Payments → Manual payment methods). Step 5 handles must match the actual handles from `useSelectedPaymentOptions()`. Renaming a payment method requires re-running Step 3. Deleting and recreating one requires re-running both Step 3 (new name) and Step 5 (new handle).
-
----
-
-## Step 6: Create Customer Entitlement Metafield Definitions (Admin UI)
+## Step 4: Create Customer Entitlement Metafield Definitions (Admin UI)
 
 Create metafield definitions via Admin UI so entitlement checkboxes appear when editing customers.
 
-### 6a: Co-op Entitlement
+### 4a: Co-op Entitlement
 
 1. Go to **Settings → Custom data → Customers**
 2. Click **Add definition**
@@ -310,7 +223,7 @@ Create metafield definitions via Admin UI so entitlement checkboxes appear when 
    - **Description:** Customer can use Co-op payment method
 4. Click **Save**
 
-### 6b: Plant Entitlement
+### 4b: Plant Entitlement
 
 1. Go to **Settings → Custom data → Customers**
 2. Click **Add definition**
@@ -325,7 +238,7 @@ After creating both, they appear as checkboxes when editing any customer.
 
 ---
 
-## Step 7: Set Customer Entitlements (Admin UI)
+## Step 5: Set Customer Entitlements (Admin UI)
 
 1. Go to **Admin → Customers** → select a customer
 2. Scroll to the **Metafields** section
@@ -336,13 +249,27 @@ Repeat for each customer who should have access to Co-op or Plant payment method
 
 ---
 
+## When to Re-run Steps
+
+| Step | What it does | Re-run when... |
+|------|--------------|----------------|
+| **Step 1** | Get function ID | Never (ID is stable unless you delete/recreate the function extension) |
+| **Step 2** | Create PaymentCustomization | Never (once created, it exists). Only re-run if you deleted it. |
+| **Step 3** | Import Flows | Never (once imported and active, they persist). Re-import if deleted. |
+| **Step 4** | Create metafield definitions | Never (once created, they exist) |
+| **Step 5** | Set customer entitlements | Per-customer, as needed |
+
+**Key point:** Payment method names in Shopify Admin must match the hardcoded names in the function source (`"co-op"` and `"plant"`, case-insensitive). If you rename the payment methods, you must update the source and redeploy. Similarly, if you delete and recreate payment methods, you must re-discover the handles, update `Checkout.jsx`, and redeploy.
+
+---
+
 ## Verification Queries
 
 Use these queries to verify the app is configured correctly after completing setup.
 
 ### List Payment Customizations
 
-Verifies the PaymentCustomization was created (Step 2) and configured (Step 3).
+Verifies the PaymentCustomization was created (Step 2).
 
 ```graphql
 query ListPaymentCustomizations {
@@ -351,9 +278,6 @@ query ListPaymentCustomizations {
       id
       title
       enabled
-      metafield(namespace: "$app:payment-customization", key: "function-configuration") {
-        value
-      }
     }
   }
 }
@@ -361,14 +285,13 @@ query ListPaymentCustomizations {
 
 **Expected result:**
 - One node with `title: "Co-op/Plant Payment Gate"` and `enabled: true`
-- `metafield.value` contains the config JSON with payment method names
 
 ### Get Customer Entitlements
 
-Verifies a customer's entitlement metafields are set correctly (Step 7).
+Verifies a customer's entitlement metafields are set correctly (Step 5).
 
 **Replace `$customerId` with a customer ID** (e.g., `gid://shopify/Customer/123456789`).
-1. Get customer list to to find customer ID
+1. Get customer list to find customer ID
 ```graphql
 query CustomerList {
   customers(first: 10) {
@@ -377,7 +300,7 @@ query CustomerList {
       firstName
       lastName
       defaultEmailAddress {
-        emailAddress        
+        emailAddress
       }
       createdAt
       updatedAt
@@ -392,7 +315,7 @@ query GetCustomerEntitlements($customerId: ID!) {
   customer(id: $customerId) {
     id
     defaultEmailAddress {
-        emailAddress        
+        emailAddress
     }
     coop: metafield(namespace: "custom", key: "co_op") {
       value
@@ -413,26 +336,6 @@ query GetCustomerEntitlements($customerId: ID!) {
 - `plant.value: "true"` if customer is entitled to Plant payment
 - `null` if not entitled (metafield not set)
 
-### Get Shop Config
-
-Verifies the Shop config metafield was set correctly (Step 5).
-
-```graphql
-query GetShopConfig {
-  shop {
-    id
-    metafield(namespace: "$app:co-op-plant-payment", key: "configuration") {
-      value
-    }
-  }
-}
-```
-
-**Expected result:**
-- `metafield.value` contains the handle-to-type map: `{"paymentMethodHandles":{"<handle>":"co-op","<handle>":"plant"}}`
-- This format is intentionally different from Step 3 (which uses names). The Checkout UI extension can only see handles.
-- If `null`, the Checkout UI extension won't know which payment methods are Co-op/Plant
-
 ---
 
 ## Troubleshooting
@@ -440,7 +343,7 @@ query GetShopConfig {
 ### Payment methods not hiding
 
 1. Verify PaymentCustomization is enabled
-2. Check payment method names in config match Shopify Admin exactly
+2. Check payment method names in Admin exactly match the hardcoded names (`Co-op`, `Plant`)
 3. Verify customer has entitlement metafields set to `"true"`
 4. Check function logs in Partner Dashboard → Extensions → Functions
 5. Verify `buyerIdentity` in function input is not `null` (customer must be logged in)
@@ -453,10 +356,9 @@ query GetShopConfig {
 ### Checkout UI not showing fields
 
 1. Verify extension block is added in Checkout Editor
-2. Check Shop config metafield is set (run the "Get Shop Config" verification query)
-3. Verify payment method handles in Shop config match actual handles — log `useSelectedPaymentOptions()` in the extension and compare
-4. Check browser console for errors
-5. Use the dev console preview link (`<tunnel>/extensions/dev-console`) rather than navigating checkout manually — Checkout Editor caches the tunnel URL across sessions
+2. Verify payment method handles in `Checkout.jsx` match the actual handles for this store — log `useSelectedPaymentOptions()` in the extension and compare
+3. Check browser console for errors
+4. Use the dev console preview link (`<tunnel>/extensions/dev-console`) rather than navigating checkout manually — Checkout Editor caches the tunnel URL across sessions
 
 ### Customer can't see Co-op/Plant payment
 

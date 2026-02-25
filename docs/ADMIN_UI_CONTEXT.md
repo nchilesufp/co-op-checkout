@@ -1,6 +1,8 @@
 # Admin UI Feature Context
 
-This document provides context for building an Admin UI backend for the Co-op Checkout app. The goal is to replace the manual GraphQL runbook steps with a user-friendly interface.
+> **Status: Not yet built.** This document describes a planned Admin UI backend. The app currently runs as extension-only.
+
+This document provides context for building an Admin UI backend for the Co-op Checkout app. The goal is to replace the remaining manual GraphQL setup steps with a user-friendly interface.
 
 ---
 
@@ -9,43 +11,33 @@ This document provides context for building an Admin UI backend for the Co-op Ch
 The app is **extension-only** with no backend:
 - **Payment Customization Function** — hides/shows Co-op and Plant payment methods based on customer entitlements
 - **Checkout UI Extension** — renders input fields when Co-op/Plant payment is selected
+- **Shopify Flows** — automates order data handling and customer entitlement initialization
 
-All configuration is currently done via **manual GraphQL mutations** in Shopify's GraphiQL Explorer (see `docs/INSTALL.md`). This is tedious and error-prone.
+**Configuration approach:**
+- Payment method name matching and handle mapping are **hardcoded in source** (see `TECHNICAL_IMPLEMENTATION.md` Section 2.2 for why metafield-based config was abandoned)
+- The remaining manual setup steps requiring GraphQL are: creating the PaymentCustomization instance (Steps 1-2 in `INSTALL.md`)
+- Customer entitlements are managed via Shopify Admin UI (checkboxes on customer records)
 
 ---
 
 ## What the Admin UI Should Replace
 
-The UI should automate these manual setup steps:
+The UI should automate these remaining manual setup steps:
 
-### 1. PaymentCustomization Setup (Steps 1-3 in INSTALL.md)
+### 1. PaymentCustomization Setup (Steps 1-2 in INSTALL.md)
 
 **Currently manual:**
 1. Query `shopifyFunctions` to find the function ID
 2. Run `paymentCustomizationCreate` mutation with that function ID
-3. Run `metafieldsSet` mutation to configure payment method names
 
 **UI should:**
 - Auto-detect the installed function ID
 - Create the PaymentCustomization if it doesn't exist
-- Provide form fields for Co-op and Plant payment method names
-- Save config via `metafieldsSet`
+- Show current status (exists / enabled)
 
-### 2. Shop Config for Checkout UI (Steps 4-5 in INSTALL.md)
+**Note:** Payment method name matching is hardcoded in the function source (`"co-op"` and `"plant"`), not configurable via UI. Handle mapping is hardcoded in `Checkout.jsx`. These require code changes and redeployment when targeting a new store.
 
-**Currently manual:**
-1. Query `shop { id }` to get Shop ID
-2. Discover payment method handles by adding console.log to extension, going through checkout
-3. Run `metafieldsSet` mutation with handle-to-type map
-
-**UI should:**
-- Auto-fetch Shop ID
-- **Challenge:** Payment method handles cannot be discovered via Admin API — they're only visible in the Checkout UI extension at runtime. Options:
-  - Have user paste handles discovered via dev console (simpler)
-  - Query manual payment methods by name from Admin API, let user map them (but we still need handles)
-- Save config via `metafieldsSet`
-
-### 3. Customer Entitlement Metafield Definitions (Step 6)
+### 2. Customer Entitlement Metafield Definitions (Step 4 in INSTALL.md)
 
 **Currently manual:** Create metafield definitions in Admin UI (Settings → Custom data → Customers)
 
@@ -53,7 +45,7 @@ The UI should automate these manual setup steps:
 - Run `metafieldDefinitionCreate` mutations for `custom.co_op` and `custom.plant` boolean metafields
 - Check if definitions already exist first
 
-### 4. Customer Entitlements Management (Step 7)
+### 3. Customer Entitlements Management (Step 5 in INSTALL.md)
 
 **Currently manual:** Toggle checkboxes on individual customer records
 
@@ -215,14 +207,9 @@ Type: `json`
 
 ### 1. Setup / Configuration Page
 
-- Status indicators: "Function detected ✓", "PaymentCustomization created ✓", "Config saved ✓"
-- Form fields:
-  - Co-op payment method name (default: "Co-op")
-  - Plant payment method name (default: "Plant")
-  - Co-op payment method handle (manual input with instructions)
-  - Plant payment method handle (manual input with instructions)
-- "Save Configuration" button
-- Instructions for handle discovery (link to dev console method)
+- Status indicators: "Function detected ✓", "PaymentCustomization created ✓"
+- "Create PaymentCustomization" button (runs Steps 1-2 automatically)
+- Note: Payment method names and handles are hardcoded in source — UI cannot configure them
 
 ### 2. Customer Entitlements Page
 
@@ -233,9 +220,8 @@ Type: `json`
 
 ### 3. Status / Debug Page (optional)
 
-- Show current PaymentCustomization config
-- Show current Shop config
-- Verification queries results
+- Show current PaymentCustomization status
+- Verification query results
 - Link to function logs in Partner Dashboard
 
 ---
@@ -252,11 +238,6 @@ Type: `json`
 
 ## Open Questions
 
-1. **Handle discovery UX** — How to make this less painful? Options:
-   - Detailed instructions with screenshots
-   - A "test mode" that logs handles automatically
-   - Accept that this is a one-time setup step
+1. **Multi-store management** — The app uses Custom Distribution. Should the UI support managing config across multiple stores, or is per-store sufficient?
 
-2. **Multi-store management** — The app uses Custom Distribution. Should the UI support managing config across multiple stores, or is per-store sufficient?
-
-3. **Customer entitlement bulk import** — Should there be CSV import/export for entitlements?
+2. **Customer entitlement bulk import** — Should there be CSV import/export for entitlements?
