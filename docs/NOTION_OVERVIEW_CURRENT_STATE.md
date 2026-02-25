@@ -43,13 +43,14 @@ This document reflects the current implementation in code before introducing a b
   - Detects selected payment method using handle map (configured via Checkout Editor settings, with hardcoded fallbacks)
   - If Co-op selected:
     - Shows required `Customer Code` select (code list hardcoded in source)
+    - Optionally shows required `Big Box Order` yes/no radio (if `coop_radio_label` setting is configured in Checkout Editor)
     - Shows optional `Notes`
   - If Plant selected:
     - Shows required `Plant #` text input
     - Shows optional `Notes`
   - Blocks checkout on proceed if required field is missing
   - Writes order data:
-    - Attributes: `Payment Type`, `Customer Code`, `Plant Number`
+    - Attributes: `Payment Type`, `Customer Code`, `Plant Number`, `Big Box Order` (Co-op only, when radio is configured)
     - Order note: optional `Notes`
   - Clears attributes/note when shopper switches away from Co-op/Plant
 
@@ -69,6 +70,7 @@ This document reflects the current implementation in code before introducing a b
   - `Payment Type` = `Co-op` or `Plant`
   - `Customer Code` (Co-op path)
   - `Plant Number` (Plant path)
+  - `Big Box Order` = `"true"` or `"false"` (Co-op path, only when radio is configured)
 - Order note:
   - free-text `Notes`
 
@@ -98,7 +100,7 @@ This document reflects the current implementation in code before introducing a b
     - Adds tag `Send to MSR`
   - Additional branch actions:
     - If payment gateway includes `Plant`, copies order attribute value to `custom.plant_number`
-    - If payment gateway includes `Co-op`, copies order attribute value to `custom.co_op_customer_code`
+    - If payment gateway includes `Co-op`, copies order attribute value to `custom.co_op_customer_code` and `custom.big_box_order` (boolean)
   - Liquid extraction supports legacy/current keys:
     - `Customer Code` or `co_op_customer_code`
     - `Plant Number` or `co_op_plant_number`

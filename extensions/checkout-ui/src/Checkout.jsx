@@ -53,6 +53,7 @@ export default async () => {
 function Extension() {
   const [customerCode, setCustomerCode] = useState('');
   const [plantNumber, setPlantNumber] = useState('');
+  const [coopRadioAnswer, setCoopRadioAnswer] = useState('');
   const [notes, setNotes] = useState('');
   const hasAttemptedProceed = useRef(false);
 
@@ -61,6 +62,10 @@ function Extension() {
   const settings = shopify.settings.value;
   const coopHandle = String(settings.coop_payment_handle || 'custom-manual-payment-d8fbfb9b8f6ff61a1e835fd6452beaec');
   const plantHandle = String(settings.plant_payment_handle || 'custom-manual-payment-56cf4b0afa456be23003a3c1792143a1');
+
+  // Optional Co-op radio field — only shown if the label setting is configured
+  const coopRadioLabel = String(settings.coop_radio_label || '');
+  const showCoopRadio = Boolean(coopRadioLabel);
 
   const paymentMethodHandles = {
     [coopHandle]: 'co-op',
@@ -89,8 +94,10 @@ function Extension() {
     if (prevPaymentType.current !== selectedPaymentType) {
       if (selectedPaymentType === 'co-op') {
         setPlantNumber('');
+        setCoopRadioAnswer('');
       } else if (selectedPaymentType === 'plant') {
         setCustomerCode('');
+        setCoopRadioAnswer('');
       }
       prevPaymentType.current = selectedPaymentType;
     }
@@ -104,8 +111,9 @@ function Extension() {
 
     const needsCoOpCode = selectedPaymentType === 'co-op' && !customerCode.trim();
     const needsPlantNumber = selectedPaymentType === 'plant' && !plantNumber.trim();
+    const needsCoOpRadio = selectedPaymentType === 'co-op' && showCoopRadio && !coopRadioAnswer;
 
-    if (needsCoOpCode || needsPlantNumber) {
+    if (needsCoOpCode || needsPlantNumber || needsCoOpRadio) {
       // On first intercept call, block silently (no error shown on initial load)
       // On subsequent calls, show the error message
       if (!hasAttemptedProceed.current) {
@@ -118,6 +126,13 @@ function Extension() {
           behavior: 'block',
           reason: 'Missing Co-op Customer Code',
           errors: [{ message: 'Please select your Customer Code to proceed.' }],
+        };
+      }
+      if (needsCoOpRadio) {
+        return {
+          behavior: 'block',
+          reason: 'Missing Co-op radio answer',
+          errors: [{ message: `Please answer the "${coopRadioLabel}" question to proceed.` }],
         };
       }
       if (needsPlantNumber) {
@@ -148,6 +163,10 @@ function Extension() {
         applyAttributeChange({ type: 'updateAttribute', key: 'Customer Code', value: formattedCode });
       }
       applyAttributeChange({ type: 'updateAttribute', key: 'Plant Number', value: '' });
+
+      if (showCoopRadio) {
+        applyAttributeChange({ type: 'updateAttribute', key: 'Big Box Order', value: coopRadioAnswer });
+      }
     }
 
     if (selectedPaymentType === 'plant') {
@@ -157,7 +176,7 @@ function Extension() {
       }
       applyAttributeChange({ type: 'updateAttribute', key: 'Customer Code', value: '' });
     }
-  }, [selectedPaymentType, customerCode, plantNumber]);
+  }, [selectedPaymentType, customerCode, plantNumber, coopRadioAnswer]);
 
   // Sync notes to standard cart note (shows as "Notes from customer" on order)
   useEffect(() => {
@@ -169,7 +188,8 @@ function Extension() {
   useEffect(() => {
     if (selectedPaymentType || !instructions.attributes.canUpdateAttributes) return;
 
-    ['Payment Type', 'Customer Code', 'Plant Number'].forEach((key) => {
+    const keysToClean = ['Payment Type', 'Customer Code', 'Plant Number', 'Big Box Order'];
+    keysToClean.forEach((key) => {
       applyAttributeChange({ type: 'updateAttribute', key, value: '' });
     });
     applyNoteChange({ type: 'updateNote', note: '' });
@@ -193,16 +213,29 @@ function Extension() {
       <s-text type="strong">{isCoOp ? 'Co-op Account Details' : 'Plant Account Details'}</s-text>
 
       {isCoOp ? (
-        <s-select
-          label="Customer Code"
-          value={customerCode}
-          placeholder="Select your Customer Code"
-          onChange={(e) => setCustomerCode(/** @type {any} */ (e.currentTarget).value)}
-        >
-          {CUSTOMER_CODES.map(({ code }) => (
-            <s-option key={code} value={code}>{code}</s-option>
-          ))}
-        </s-select>
+        <>
+          <s-select
+            label="Customer Code"
+            value={customerCode}
+            placeholder="Select your Customer Code"
+            onChange={(e) => setCustomerCode(/** @type {any} */ (e.currentTarget).value)}
+          >
+            {CUSTOMER_CODES.map(({ code }) => (
+              <s-option key={code} value={code}>{code}</s-option>
+            ))}
+          </s-select>
+
+          {showCoopRadio && (
+            <s-choice-list
+              label={coopRadioLabel}
+              values={coopRadioAnswer ? [coopRadioAnswer] : []}
+              onChange={(e) => setCoopRadioAnswer(/** @type {any} */ (e.currentTarget).values?.[0] || '')}
+            >
+              <s-choice value="true">Yes</s-choice>
+              <s-choice value="false">No</s-choice>
+            </s-choice-list>
+          )}
+        </>
       ) : (
         <s-text-field
           label="Plant #"

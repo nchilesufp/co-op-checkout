@@ -41,7 +41,7 @@ This document covers deploying the app and configuring it on each store.
 7. [ ] Step 4: Create order metafield definitions (via Admin UI)
 8. [ ] Step 5: Create customer entitlement metafield definitions (via Admin UI)
 9. [ ] Step 6: Set customer entitlements (via Admin UI)
-10. [ ] Add Checkout UI block in Checkout Editor, enable "Block checkout progress", and configure payment method handles
+10. [ ] Add Checkout UI block in Checkout Editor, enable "Block checkout progress", configure payment method handles, and optionally set the Co-op Radio Question
 
 ---
 
@@ -197,7 +197,7 @@ Flow files are in `docs/shopify-flows/`.
 
 **File:** `docs/shopify-flows/Assign Co-op and Plant metafields and MSR tags.flow`
 
-Runs on order creation. For Co-op orders: copies the Customer Code attribute to `custom.co_op_customer_code` and sets `checkoutcustomizer.customercode_v1` to the first 4 chars of the code. For Plant orders: copies the Plant Number to `custom.plant_number`. For all other orders: sets `checkoutcustomizer.customercode_v1 = "CAHM"`. Every order gets the "Send to MSR" tag.
+Runs on order creation. For Co-op orders: copies the Customer Code attribute to `custom.co_op_customer_code`, copies the Big Box Order attribute to `custom.big_box_order` (boolean metafield), and sets `checkoutcustomizer.customercode_v1` to the first 4 chars of the code. For Plant orders: copies the Plant Number to `custom.plant_number`. For all other orders: sets `checkoutcustomizer.customercode_v1 = "CAHM"`. Every order gets the "Send to MSR" tag.
 
 ### Flow 2: Initialize entitlements for new customers
 
@@ -235,7 +235,20 @@ Create order metafield definitions so the Shopify Flows can write order data tha
    - **Description:** Plant number entered at checkout for Plant orders
 4. Click **Save**
 
-### 4c: MSR Customer Code (Deckorators only)
+### 4c: Big Box Order (stores with radio field enabled)
+
+1. Go to **Settings → Custom data → Orders**
+2. Click **Add definition**
+3. Fill in:
+   - **Name:** Big Box Order
+   - **Namespace and key:** `custom.big_box_order`
+   - **Type:** True or false
+   - **Description:** Whether the Co-op order is a big box (Lowe's/Home Depot) order
+4. Click **Save**
+
+**Note:** Only required on stores where the Co-op Radio Question is configured in the Checkout Editor.
+
+### 4d: MSR Customer Code (Deckorators only)
 
 This metafield is part of the MSR integration and is created by a separate legacy custom app called "MSR Integration", installed by IT. It is documented here for completeness.
 

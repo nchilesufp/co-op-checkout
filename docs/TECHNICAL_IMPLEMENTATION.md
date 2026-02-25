@@ -28,7 +28,7 @@ The app is a **custom Shopify app** (Custom distribution, no App Store listing) 
 - Purpose:
   - Detect when Co-op or Plant payment method is selected
   - Render required input fields:
-    - Co-op: `Customer Code` dropdown (required), `Notes` (optional)
+    - Co-op: `Customer Code` dropdown (required), optional `Big Box Order` yes/no radio (if configured), `Notes` (optional)
     - Plant: `Plant #` text field (required), `Notes` (optional)
   - Block checkout progress when required fields are missing
   - Store values in order attributes
@@ -102,6 +102,17 @@ Handles are opaque hashes unique to each store. When installing on a new store:
 1. Discover the handles (see Section 5)
 2. Paste them into the Checkout Editor settings for the Co-op Checkout block
 No code change or redeploy needed.
+
+### Optional Big Box Order Radio (Co-op only)
+
+An optional yes/no radio field can be enabled per-store via the Checkout Editor setting **"Co-op Radio Question"** (`coop_radio_label`). When the setting is populated, the radio appears below the Customer Code dropdown during Co-op checkout and is required to proceed. The answer is stored as the `Big Box Order` order attribute with a value of `"true"` or `"false"`.
+
+```javascript
+const coopRadioLabel = String(settings.coop_radio_label || '');
+const showCoopRadio = Boolean(coopRadioLabel);
+```
+
+If the setting is left blank (default), the radio is hidden and no attribute is written. This allows stores to opt in to the feature without affecting other stores.
 
 ---
 
@@ -215,7 +226,7 @@ for (const option of selectedOptions) {
 }
 ```
 
-Settings are defined in `shopify.extension.toml` as `coop_payment_handle` and `plant_payment_handle` (`single_line_text_field` type). Merchants configure them in the Checkout Editor when placing the block.
+Settings are defined in `shopify.extension.toml` as `coop_radio_label`, `coop_payment_handle`, and `plant_payment_handle` (all `single_line_text_field` type). Merchants configure them in the Checkout Editor when placing the block.
 
 ## 4.3 UI & Validation Behavior
 
@@ -223,8 +234,9 @@ Settings are defined in `shopify.extension.toml` as `coop_payment_handle` and `p
 - If no Co-op/Plant method selected → render nothing
 - If Co-op method selected:
   - Render `Customer Code` dropdown (required) — populated from `docs/customer-codes.md`
+  - If `coop_radio_label` setting is configured: render yes/no radio with that label (required)
   - Render `Notes` textarea (optional)
-  - Set attributes: `Payment Type = "Co-op"`, `Customer Code = "<code> <name>"`
+  - Set attributes: `Payment Type = "Co-op"`, `Customer Code = "<code> <name>"`, optionally `Big Box Order = "true"/"false"`
   - Set order note from `Notes` field (standard Shopify order note, not an attribute)
 - If Plant method selected:
   - Render `Plant #` text field (required)
@@ -380,6 +392,7 @@ After a successful checkout with Co-op or Plant payment, this data is set on the
 | `Payment Type` | `"Co-op"` or `"Plant"` |
 | `Customer Code` | `"9050 UFP International"` (Co-op only) |
 | `Plant Number` | `"12345"` (Plant only) |
+| `Big Box Order` | `"true"` or `"false"` (Co-op only, when radio is configured) |
 
 **Order Note** (under "Notes from customer"):
 
@@ -402,6 +415,7 @@ Trigger: `order_created`. Logic runs as two sequential conditions:
 ```
 IF paymentGatewayNames contains "Co-op"
   → Set custom.co_op_customer_code  (Customer Code attribute value)
+  → Set custom.big_box_order  (Big Box Order attribute value, boolean metafield)
   → Set checkoutcustomizer.customercode_v1  (first 4 chars of Customer Code)
   → Add "Send to MSR" tag
 ELSE IF paymentGatewayNames contains "Plant"
@@ -419,6 +433,7 @@ All orders receive the "Send to MSR" tag regardless of payment method. Plant ord
 | Metafield | Value | Condition |
 |-----------|-------|-----------|
 | `custom.co_op_customer_code` | Customer Code attribute (`"<code> <name>"`) | Payment = Co-op |
+| `custom.big_box_order` | Big Box Order attribute (`"true"` or `"false"`) | Payment = Co-op |
 | `custom.plant_number` | Plant Number attribute | Payment = Plant |
 | `checkoutcustomizer.customercode_v1` | First 4 chars of Customer Code (e.g. `"9050"`) | Payment = Co-op |
 | `checkoutcustomizer.customercode_v1` | `"CAHM"` | All other payment methods |
@@ -433,6 +448,11 @@ Extract full Customer Code value (for `custom.co_op_customer_code`):
 Extract 4-char code only (for `checkoutcustomizer.customercode_v1`):
 ```liquid
 {% for attr in order.customAttributes %}{% if attr.key == 'Customer Code' or attr.key == 'co_op_customer_code' %}{{ attr.value | strip_newlines | slice: 0, 4 }}{% endif %}{% endfor %}
+```
+
+Extract Big Box Order value (for `custom.big_box_order`):
+```liquid
+{% for attr in order.customAttributes %}{% if attr.key == 'Big Box Order' %}{{ attr.value }}{% endif %}{% endfor %}
 ```
 
 Extract Plant Number value (for `custom.plant_number`):
