@@ -56,13 +56,15 @@ function Extension() {
   const [notes, setNotes] = useState('');
   const hasAttemptedProceed = useRef(false);
 
-  // Payment method handles are hardcoded for reliability.
-  // These only change if payment methods are deleted and recreated in Admin.
-  // Co-op handle: custom-manual-payment-a10cd6c44f627f6a0a3be7f57cd3baad
-  // Plant handle: custom-manual-payment-414957dd431505fb5d4dadc40c7554ef
+  // Payment method handles are configured per-store via Checkout Editor settings.
+  // Falls back to hardcoded defaults if settings are not configured.
+  const settings = shopify.settings.value;
+  const coopHandle = String(settings.coop_payment_handle || 'custom-manual-payment-d8fbfb9b8f6ff61a1e835fd6452beaec');
+  const plantHandle = String(settings.plant_payment_handle || 'custom-manual-payment-56cf4b0afa456be23003a3c1792143a1');
+
   const paymentMethodHandles = {
-    'custom-manual-payment-a10cd6c44f627f6a0a3be7f57cd3baad': 'co-op',
-    'custom-manual-payment-414957dd431505fb5d4dadc40c7554ef': 'plant',
+    [coopHandle]: 'co-op',
+    [plantHandle]: 'plant',
   };
 
   // Detect which payment method is selected by looking up its handle

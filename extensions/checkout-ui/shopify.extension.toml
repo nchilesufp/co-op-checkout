@@ -22,3 +22,17 @@ target = "purchase.checkout.block.render"
 [extensions.capabilities]
 api_access = true
 block_progress = true
+
+[extensions.settings]
+
+[[extensions.settings.fields]]
+key = "coop_payment_handle"
+type = "single_line_text_field"
+name = "Co-op Payment Handle"
+description = "The handle for the Co-op manual payment method (e.g. custom-manual-payment-abc123). Discover via console.log in the extension."
+
+[[extensions.settings.fields]]
+key = "plant_payment_handle"
+type = "single_line_text_field"
+name = "Plant Payment Handle"
+description = "The handle for the Plant manual payment method (e.g. custom-manual-payment-def456). Discover via console.log in the extension."

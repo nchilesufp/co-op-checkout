@@ -38,9 +38,10 @@ This document covers deploying the app and configuring it on each store.
 4. [ ] Step 1: Get function ID
 5. [ ] Step 2: Create PaymentCustomization
 6. [ ] Step 3: Import Shopify Flows
-7. [ ] Step 4: Create customer entitlement metafield definitions (via Admin UI)
-8. [ ] Step 5: Set customer entitlements (via Admin UI)
-9. [ ] Add Checkout UI block in Checkout Editor and enable "Block checkout progress"
+7. [ ] Step 4: Create order metafield definitions (via Admin UI)
+8. [ ] Step 5: Create customer entitlement metafield definitions (via Admin UI)
+9. [ ] Step 6: Set customer entitlements (via Admin UI)
+10. [ ] Add Checkout UI block in Checkout Editor, enable "Block checkout progress", and configure payment method handles
 
 ---
 
@@ -110,7 +111,7 @@ Each config file should be committed to the repo. Add org-specific configs to `.
 
 **Important:** Every value in the steps (function ID, PaymentCustomization ID) is per-store. They are not shared across stores.
 
-**Note on payment method handles:** The Checkout UI extension matches payment methods by opaque handle. Handles are hardcoded in `extensions/checkout-ui/src/Checkout.jsx`. When setting up a new store, you must discover the handles for that store's payment methods, update the file, and redeploy. See [TECHNICAL_IMPLEMENTATION.md Section 5](TECHNICAL_IMPLEMENTATION.md#5-setup--install-flow) for the handle discovery process.
+**Note on payment method handles:** The Checkout UI extension matches payment methods by opaque handle. Handles are configured per-store via the Checkout Editor settings (no code change or redeploy needed). See [TECHNICAL_IMPLEMENTATION.md Section 5](TECHNICAL_IMPLEMENTATION.md#5-setup--install-flow) for the handle discovery process.
 
 ### Configuring stores without CLI access
 
@@ -204,15 +205,58 @@ Runs on order creation. For Co-op orders: copies the Customer Code attribute to 
 
 Runs on customer creation. Sets `custom.co_op` and `custom.plant` to `false` for any new customer that doesn't already have those metafields set to `true`.
 
-**Note:** The `checkoutcustomizer.customercode_v1` metafield and "Send to MSR" tag set by Flow 1 are specific to the Deckorators MSR integration. Other stores may need to modify or remove those actions.
+**Note:** The `checkoutcustomizer.customercode_v1` metafield and "Send to MSR" tag set by Flow 1 are specific to the Deckorators MSR integration. The `checkoutcustomizer.customercode_v1` metafield (named "MSR Customer Code" in Admin) is created by a separate legacy custom app called "MSR Integration", installed by IT. Other stores may need to modify or remove those actions from the Flow.
 
 ---
 
-## Step 4: Create Customer Entitlement Metafield Definitions (Admin UI)
+## Step 4: Create Order Metafield Definitions (Admin UI)
+
+Create order metafield definitions so the Shopify Flows can write order data that is visible and searchable in Admin.
+
+### 4a: Co-op Customer Code
+
+1. Go to **Settings → Custom data → Orders**
+2. Click **Add definition**
+3. Fill in:
+   - **Name:** Co-op Customer Code
+   - **Namespace and key:** `custom.co_op_customer_code`
+   - **Type:** Single line text
+   - **Description:** Customer Code selected at checkout for Co-op orders
+4. Click **Save**
+
+### 4b: Plant Number
+
+1. Go to **Settings → Custom data → Orders**
+2. Click **Add definition**
+3. Fill in:
+   - **Name:** Plant Number
+   - **Namespace and key:** `custom.plant_number`
+   - **Type:** Single line text
+   - **Description:** Plant number entered at checkout for Plant orders
+4. Click **Save**
+
+### 4c: MSR Customer Code (Deckorators only)
+
+This metafield is part of the MSR integration and is created by a separate legacy custom app called "MSR Integration", installed by IT. It is documented here for completeness.
+
+1. Go to **Settings → Custom data → Orders**
+2. Click **Add definition**
+3. Fill in:
+   - **Name:** MSR Customer Code
+   - **Namespace and key:** `checkoutcustomizer.customercode_v1`
+   - **Type:** Single line text
+   - **Description:** 4-character customer code for MSR sync
+4. Click **Save**
+
+**Note:** On production Deckorators stores, this definition is managed by the MSR Integration app. Only create it manually on dev/test stores where that app is not installed.
+
+---
+
+## Step 5: Create Customer Entitlement Metafield Definitions (Admin UI)
 
 Create metafield definitions via Admin UI so entitlement checkboxes appear when editing customers.
 
-### 4a: Co-op Entitlement
+### 5a: Co-op Entitlement
 
 1. Go to **Settings → Custom data → Customers**
 2. Click **Add definition**
@@ -223,7 +267,7 @@ Create metafield definitions via Admin UI so entitlement checkboxes appear when 
    - **Description:** Customer can use Co-op payment method
 4. Click **Save**
 
-### 4b: Plant Entitlement
+### 5b: Plant Entitlement
 
 1. Go to **Settings → Custom data → Customers**
 2. Click **Add definition**
@@ -238,7 +282,7 @@ After creating both, they appear as checkboxes when editing any customer.
 
 ---
 
-## Step 5: Set Customer Entitlements (Admin UI)
+## Step 6: Set Customer Entitlements (Admin UI)
 
 1. Go to **Admin → Customers** → select a customer
 2. Scroll to the **Metafields** section
@@ -256,10 +300,11 @@ Repeat for each customer who should have access to Co-op or Plant payment method
 | **Step 1** | Get function ID | Never (ID is stable unless you delete/recreate the function extension) |
 | **Step 2** | Create PaymentCustomization | Never (once created, it exists). Only re-run if you deleted it. |
 | **Step 3** | Import Flows | Never (once imported and active, they persist). Re-import if deleted. |
-| **Step 4** | Create metafield definitions | Never (once created, they exist) |
-| **Step 5** | Set customer entitlements | Per-customer, as needed |
+| **Step 4** | Create order metafield definitions | Never (once created, they exist) |
+| **Step 5** | Create customer metafield definitions | Never (once created, they exist) |
+| **Step 6** | Set customer entitlements | Per-customer, as needed |
 
-**Key point:** Payment method names in Shopify Admin must match the hardcoded names in the function source (`"co-op"` and `"plant"`, case-insensitive). If you rename the payment methods, you must update the source and redeploy. Similarly, if you delete and recreate payment methods, you must re-discover the handles, update `Checkout.jsx`, and redeploy.
+**Key point:** Payment method names in Shopify Admin must match the hardcoded names in the function source (`"co-op"` and `"plant"`, case-insensitive). If you rename the payment methods, you must update the source and redeploy. If you delete and recreate payment methods, you must re-discover the handles and update them in the Checkout Editor settings.
 
 ---
 
@@ -288,7 +333,7 @@ query ListPaymentCustomizations {
 
 ### Get Customer Entitlements
 
-Verifies a customer's entitlement metafields are set correctly (Step 5).
+Verifies a customer's entitlement metafields are set correctly (Step 6).
 
 **Replace `$customerId` with a customer ID** (e.g., `gid://shopify/Customer/123456789`).
 1. Get customer list to find customer ID
@@ -356,7 +401,7 @@ query GetCustomerEntitlements($customerId: ID!) {
 ### Checkout UI not showing fields
 
 1. Verify extension block is added in Checkout Editor
-2. Verify payment method handles in `Checkout.jsx` match the actual handles for this store — log `useSelectedPaymentOptions()` in the extension and compare
+2. Verify payment method handles in the Checkout Editor settings match the actual handles for this store — add a temporary `console.log(selectedOptions)` in `Checkout.jsx`, deploy, and compare
 3. Check browser console for errors
 4. Use the dev console preview link (`<tunnel>/extensions/dev-console`) rather than navigating checkout manually — Checkout Editor caches the tunnel URL across sessions
 

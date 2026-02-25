@@ -40,7 +40,7 @@ This document reflects the current implementation in code before introducing a b
 - API version: `2026-01`
 - `block_progress = true` enabled in extension config
 - Behavior:
-  - Detects selected payment method using hardcoded handle map
+  - Detects selected payment method using handle map (configured via Checkout Editor settings, with hardcoded fallbacks)
   - If Co-op selected:
     - Shows required `Customer Code` select (code list hardcoded in source)
     - Shows optional `Notes`
@@ -81,7 +81,7 @@ This document reflects the current implementation in code before introducing a b
   - Ensure Customer metafield definitions exist (`custom.co_op`, `custom.plant`)
   - Set customer entitlement values
   - Place Checkout UI block in Checkout Editor and enable block checkout progress
-  - Update hardcoded payment method handles in `Checkout.jsx` for that store, then redeploy
+  - Configure payment method handles in the Checkout Editor settings for the Co-op Checkout block
 
 ## Shopify Flows in Repo
 
@@ -113,7 +113,7 @@ This document reflects the current implementation in code before introducing a b
 
 ## Known Constraints and Risks (Pre-Backend)
 
-- Store-specific hardcoded payment handles in `Checkout.jsx` require code edits + redeploy per store
+- Store-specific payment handles are configured via Checkout Editor settings (no code change needed), with hardcoded fallbacks
 - Logic is split across multiple surfaces (function, UI extension, Shopify Flow), increasing operational setup complexity
 - Configuration is partly manual in Shopify Admin (payment methods, checkout block placement, metafields)
 - No centralized audit/config management layer yet (expected backend gap)
@@ -124,7 +124,7 @@ This document reflects the current implementation in code before introducing a b
 
 ## Confirmed Decisions
 
-1. Hardcoded payment handle mapping is the intended short-term production strategy (it was the only reliable approach found).
+1. Payment handles are configured per-store via Checkout Editor extension settings, with hardcoded fallbacks for reliability.
 2. Setup docs should remove old Shop config/metafield setup where not needed by current code.
 3. Both Shopify Flows are required for all orgs, including MSR tagging flow behavior.
 

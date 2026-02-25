@@ -84,20 +84,24 @@ Names must match the manual payment method names in Shopify Admin (Settings → 
 
 ### Checkout UI Extension
 
-Matches payment methods by **handle**:
+Matches payment methods by **handle**, configured per-store via Checkout Editor settings with hardcoded fallbacks:
 
 ```javascript
 // In Checkout.jsx
+const settings = shopify.settings.value;
+const coopHandle = String(settings.coop_payment_handle || 'custom-manual-payment-d8fbfb9b8f6ff61a1e835fd6452beaec');
+const plantHandle = String(settings.plant_payment_handle || 'custom-manual-payment-56cf4b0afa456be23003a3c1792143a1');
+
 const paymentMethodHandles = {
-  'custom-manual-payment-a10cd6c44f627f6a0a3be7f57cd3baad': 'co-op',
-  'custom-manual-payment-414957dd431505fb5d4dadc40c7554ef': 'plant',
+  [coopHandle]: 'co-op',
+  [plantHandle]: 'plant',
 };
 ```
 
-Handles are opaque hashes unique to each store. When deploying to a new store, you must:
+Handles are opaque hashes unique to each store. When installing on a new store:
 1. Discover the handles (see Section 5)
-2. Update the hardcoded values in `Checkout.jsx`
-3. Redeploy
+2. Paste them into the Checkout Editor settings for the Co-op Checkout block
+No code change or redeploy needed.
 
 ---
 
@@ -189,10 +193,16 @@ Key settings in `shopify.extension.toml`:
 
 ## 4.2 Handle Detection
 
+Handles are read from Checkout Editor settings, with hardcoded fallbacks:
+
 ```javascript
+const settings = shopify.settings.value;
+const coopHandle = String(settings.coop_payment_handle || 'custom-manual-payment-d8fbfb9b8f6ff61a1e835fd6452beaec');
+const plantHandle = String(settings.plant_payment_handle || 'custom-manual-payment-56cf4b0afa456be23003a3c1792143a1');
+
 const paymentMethodHandles = {
-  'custom-manual-payment-a10cd6c44f627f6a0a3be7f57cd3baad': 'co-op',
-  'custom-manual-payment-414957dd431505fb5d4dadc40c7554ef': 'plant',
+  [coopHandle]: 'co-op',
+  [plantHandle]: 'plant',
 };
 
 const selectedOptions = useSelectedPaymentOptions();
@@ -204,6 +214,8 @@ for (const option of selectedOptions) {
   }
 }
 ```
+
+Settings are defined in `shopify.extension.toml` as `coop_payment_handle` and `plant_payment_handle` (`single_line_text_field` type). Merchants configure them in the Checkout Editor when placing the block.
 
 ## 4.3 UI & Validation Behavior
 
@@ -237,17 +249,17 @@ for (const option of selectedOptions) {
 2. **Install app** on Shopify Plus store
    - Custom distribution app with protected customer data access
 
-3. **Discover and hardcode payment method handles** (for Checkout UI — new stores only)
+3. **Discover payment method handles** (for Checkout UI — new stores only)
    - Payment method handles are opaque hashes unique to each store (e.g., `custom-manual-payment-<hash>`)
    - They cannot be queried via Admin API — they must be logged at runtime
    - Add temporary console.log to `Checkout.jsx`:
      ```javascript
      console.log('selectedOptions:', selectedOptions);
      ```
-   - Deploy and go through checkout on the target store using the dev console preview link (`<tunnel>/extensions/dev-console`)
-   - Select Co-op, note the handle; select Plant, note the handle
-   - Update the `paymentMethodHandles` object in `Checkout.jsx`
-   - Remove the console.log and redeploy
+   - Run `npm run dev` and go through checkout on the target store
+   - Select Co-op, note the handle from the browser console; select Plant, note the handle
+   - Remove the console.log
+   - Paste the handles into the Checkout Editor settings for the Co-op Checkout block (see step 8)
 
 4. **Create PaymentCustomization instance** via GraphQL
    - See INSTALL.md Steps 1-2
@@ -255,14 +267,17 @@ for (const option of selectedOptions) {
 5. **Import Shopify Flows**
    - See INSTALL.md Step 3
 
-6. **Create customer entitlement metafield definitions** via Admin UI
+6. **Create order metafield definitions** via Admin UI
    - See INSTALL.md Step 4
 
-7. **Add Checkout UI block** in Checkout Editor
+7. **Create customer entitlement metafield definitions** via Admin UI
+   - See INSTALL.md Step 5
+
+8. **Add Checkout UI block** in Checkout Editor
    - Enable "Block checkout progress" in the block settings
 
-8. **Set customer entitlements** via Admin UI
-   - See INSTALL.md Step 5
+9. **Set customer entitlements** via Admin UI
+   - See INSTALL.md Step 6
 
 ---
 
@@ -308,7 +323,7 @@ Both extensions were originally designed to read configuration from metafields:
 - The PaymentCustomization config metafield worked in dev mode (`shopify app dev`) but was empty/null when the function ran in production after `shopify app deploy`
 - The Shop metafield was never accessible from the Checkout UI extension — `useAppMetafields()` returned `[]` even after creating proper metafield definitions with storefront access
 
-**Solution:** Hardcode the values directly in the source code. This is less flexible but 100% reliable.
+**Solution:** Payment method names are hardcoded in the function source (reliable). Payment method handles use Checkout Editor extension settings (configurable per-store without code changes), with hardcoded fallbacks for safety.
 
 ### Payment method handles are opaque hashes, not derived from names
 
@@ -318,8 +333,7 @@ Handles look like `custom-manual-payment-56cf4b0afa456be23003a3c1792143a1`. They
 
 A manual payment method's handle does not change across sessions or page reloads. It changes only if the payment method is deleted and recreated in Admin. If you recreate a payment method, you must:
 1. Re-discover the new handle
-2. Update `Checkout.jsx`
-3. Redeploy
+2. Update the handle in the Checkout Editor settings for the Co-op Checkout block
 
 ### Payment method names must match exactly
 
@@ -452,4 +466,4 @@ To import a flow on a new store:
 3. Select the `.flow` file
 4. Review and activate
 
-**Note:** The `checkoutcustomizer.customercode_v1` metafield and "Send to MSR" tag are specific to the Deckorators MSR integration. Other stores may need to modify or remove these actions.
+**Note:** The `checkoutcustomizer.customercode_v1` metafield (named "MSR Customer Code" in Admin) and "Send to MSR" tag are specific to the Deckorators MSR integration. The metafield definition is created by a separate legacy custom app called "MSR Integration", installed by IT. Other stores may need to modify or remove these actions from the Flow.
