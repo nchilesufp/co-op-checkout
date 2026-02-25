@@ -6,6 +6,7 @@ A Shopify extension-only app that enables B2B buyers to checkout using Co-op or 
 
 - **Payment Customization Function**: Hides Co-op and Plant payment methods for non-entitled customers (guests and customers without entitlement metafields)
 - **Checkout UI Extension**: Displays required input fields (Customer Code dropdown or Plant # text field) when Co-op/Plant payment is selected
+- **Shopify Flows**: Automates order data handling — copies Customer Code / Plant Number to searchable order metafields, initializes entitlement metafields for new customers
 
 ## Requirements
 
@@ -18,7 +19,8 @@ A Shopify extension-only app that enables B2B buyers to checkout using Co-op or 
 1. **Manual payment methods** named "Co-op" and "Plant" are created in Shopify Admin
 2. **Customer entitlements** are stored as boolean metafields (`custom.co_op`, `custom.plant`)
 3. **Payment Customization Function** runs at checkout and hides payment methods the customer isn't entitled to
-4. **Checkout UI Extension** renders input fields when an entitled customer selects Co-op or Plant
+4. **Checkout UI Extension** renders input fields when an entitled customer selects Co-op or Plant; captures Customer Code or Plant Number as order attributes
+5. **Shopify Flows** run on order creation to copy those attributes to searchable order metafields and add downstream processing tags
 
 ## Development
 
@@ -47,6 +49,7 @@ shopify app deploy -c deckorators
 - [Technical Implementation](docs/TECHNICAL_IMPLEMENTATION.md) - Architecture and implementation details
 - [Install & Setup Guide](docs/INSTALL.md) - Deploy, install, and configure per-store
 - [Customer Codes](docs/customer-codes.md) - List of valid customer codes for Co-op payment
+- [Shopify Flows](docs/shopify-flows/) - `.flow` files for order data handling and customer initialization
 
 ## Key Files
 

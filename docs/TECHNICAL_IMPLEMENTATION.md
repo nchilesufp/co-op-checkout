@@ -67,8 +67,8 @@ These metafields use the `custom` namespace (merchant-owned) so they:
 ## 2.2 Hardcoded Configuration (No Metafields)
 
 Both extensions use **hardcoded values** instead of reading from metafields. This approach was adopted after discovering that:
-1. PaymentCustomization config metafields work in dev mode but fail silently in production
-2. Shop metafields are not accessible to Checkout UI extensions via `useAppMetafields()`
+1. PaymentCustomization config metafields work in dev mode but fail silently in production (function input reads empty/null)
+2. Shop metafields are not accessible to Checkout UI extensions via `useAppMetafields()` — returns `[]` even with proper metafield definitions and storefront access
 
 ### Payment Customization Function
 
@@ -212,11 +212,13 @@ for (const option of selectedOptions) {
 - If Co-op method selected:
   - Render `Customer Code` dropdown (required) — populated from `docs/customer-codes.md`
   - Render `Notes` textarea (optional)
-  - Set attributes: `co_op_type = "co-op"`, `co_op_customer_code`, `co_op_notes`
+  - Set attributes: `Payment Type = "Co-op"`, `Customer Code = "<code> <name>"`
+  - Set order note from `Notes` field (standard Shopify order note, not an attribute)
 - If Plant method selected:
   - Render `Plant #` text field (required)
   - Render `Notes` textarea (optional)
-  - Set attributes: `co_op_type = "plant"`, `co_op_plant_number`, `co_op_notes`
+  - Set attributes: `Payment Type = "Plant"`, `Plant Number = "<value>"`
+  - Set order note from `Notes` field (standard Shopify order note, not an attribute)
 
 **Validation:**
 - Uses `useBuyerJourneyIntercept` to block progress when required fields are empty
@@ -235,30 +237,32 @@ for (const option of selectedOptions) {
 2. **Install app** on Shopify Plus store
    - Custom distribution app with protected customer data access
 
-3. **Discover payment method handles** (for Checkout UI)
+3. **Discover and hardcode payment method handles** (for Checkout UI — new stores only)
+   - Payment method handles are opaque hashes unique to each store (e.g., `custom-manual-payment-<hash>`)
+   - They cannot be queried via Admin API — they must be logged at runtime
    - Add temporary console.log to `Checkout.jsx`:
      ```javascript
-     console.log('handle:', selectedOptions[0]?.handle);
+     console.log('selectedOptions:', selectedOptions);
      ```
-   - Deploy and go through checkout on the target store
-   - Select Co-op, note the handle from browser console
-   - Select Plant, note the handle
+   - Deploy and go through checkout on the target store using the dev console preview link (`<tunnel>/extensions/dev-console`)
+   - Select Co-op, note the handle; select Plant, note the handle
    - Update the `paymentMethodHandles` object in `Checkout.jsx`
    - Remove the console.log and redeploy
 
 4. **Create PaymentCustomization instance** via GraphQL
    - See INSTALL.md Steps 1-2
 
-5. **Create customer entitlement metafield definitions** via Admin UI
-   - Settings → Custom data → Customers → Add definition
-   - Create "Co-op" (boolean, key: `co_op`, namespace: `custom`)
-   - Create "Plant" (boolean, key: `plant`, namespace: `custom`)
+5. **Import Shopify Flows**
+   - See INSTALL.md Step 3
 
-6. **Add Checkout UI block** in Checkout Editor
+6. **Create customer entitlement metafield definitions** via Admin UI
+   - See INSTALL.md Step 4
+
+7. **Add Checkout UI block** in Checkout Editor
    - Enable "Block checkout progress" in the block settings
 
-7. **Set customer entitlements** via Admin UI
-   - Customers → select customer → Metafields section → toggle checkboxes
+8. **Set customer entitlements** via Admin UI
+   - See INSTALL.md Step 5
 
 ---
 
@@ -379,30 +383,47 @@ Two Shopify Flows automate data handling for Co-op/Plant orders. These flows are
 
 **File:** `docs/shopify-flows/Assign Co-op and Plant metafields and MSR tags.flow`
 
-This flow runs when an order is created and:
-1. Checks the payment gateway name
-2. For Co-op/Plant orders:
-   - Copies the Customer Code or Plant Number attribute to a searchable order metafield
-   - Sets `checkoutcustomizer.customercode_v1` = "9201"
-   - Adds "Send to MSR" tag
-3. For other orders:
-   - Sets `checkoutcustomizer.customercode_v1` = "MOWI"
-   - Adds "Send to MSR" tag
+Trigger: `order_created`. Logic runs as two sequential conditions:
 
-### Metafields Created
+```
+IF paymentGatewayNames contains "Co-op"
+  → Set custom.co_op_customer_code  (Customer Code attribute value)
+  → Set checkoutcustomizer.customercode_v1  (first 4 chars of Customer Code)
+  → Add "Send to MSR" tag
+ELSE IF paymentGatewayNames contains "Plant"
+  → Set custom.plant_number  (Plant Number attribute value)
+  → Add "Send to MSR" tag
+ELSE (all other payment methods)
+  → Set checkoutcustomizer.customercode_v1 = "CAHM"
+  → Add "Send to MSR" tag
+```
 
-| Metafield | Source Attribute | Condition |
-|-----------|------------------|-----------|
-| `custom.co_op_customer_code` | Customer Code | Payment = Co-op |
-| `custom.plant_number` | Plant Number | Payment = Plant |
-| `checkoutcustomizer.customercode_v1` | (hardcoded) | Always (9201 for Co-op/Plant, MOWI otherwise) |
+All orders receive the "Send to MSR" tag regardless of payment method. Plant orders do **not** set `checkoutcustomizer.customercode_v1`.
 
-### Liquid Template for Attribute Extraction
+### Metafields Set on Orders
 
-The flow uses this Liquid template to extract attribute values:
+| Metafield | Value | Condition |
+|-----------|-------|-----------|
+| `custom.co_op_customer_code` | Customer Code attribute (`"<code> <name>"`) | Payment = Co-op |
+| `custom.plant_number` | Plant Number attribute | Payment = Plant |
+| `checkoutcustomizer.customercode_v1` | First 4 chars of Customer Code (e.g. `"9050"`) | Payment = Co-op |
+| `checkoutcustomizer.customercode_v1` | `"CAHM"` | All other payment methods |
 
+### Liquid Templates Used
+
+Extract full Customer Code value (for `custom.co_op_customer_code`):
 ```liquid
 {% for attr in order.customAttributes %}{% if attr.key == 'Customer Code' or attr.key == 'co_op_customer_code' %}{{ attr.value }}{% endif %}{% endfor %}
+```
+
+Extract 4-char code only (for `checkoutcustomizer.customercode_v1`):
+```liquid
+{% for attr in order.customAttributes %}{% if attr.key == 'Customer Code' or attr.key == 'co_op_customer_code' %}{{ attr.value | strip_newlines | slice: 0, 4 }}{% endif %}{% endfor %}
+```
+
+Extract Plant Number value (for `custom.plant_number`):
+```liquid
+{% for attr in order.customAttributes %}{% if attr.key == 'Plant Number' or attr.key == 'co_op_plant_number' %}{{ attr.value }}{% endif %}{% endfor %}
 ```
 
 ### Why Metafields?
@@ -416,11 +437,12 @@ Order attributes are not searchable in Shopify Admin. This flow copies attribute
 
 **File:** `docs/shopify-flows/Set Co-op or Plant metafield to false for new customers.flow`
 
-This flow runs when a customer is created and sets both entitlement metafields to `false` if they don't already have a value:
-- `custom.co_op` → false
-- `custom.plant` → false
+Trigger: `customer_created`. Runs two parallel checks:
 
-This ensures consistent behavior for new customers — explicitly `false` rather than unset.
+1. If `custom.co_op` is **not already `true`** → set `custom.co_op = false`
+2. If `custom.plant` is **not already `true`** → set `custom.plant = false`
+
+This ensures new customers have explicitly `false` entitlements rather than an unset metafield, so the payment function behaves consistently (both unset and `false` are treated as not entitled, but explicit values are cleaner).
 
 ## 9.3 Importing Flows
 

@@ -34,4 +34,4 @@ PKFS	Parksite Plunkett-Webster
 RULM	Russin Lumber	
 WAUS	Wausau Supply	
 
-Dropdown value is code. Name is for Admin order side (if possible). Use an id if necessar
+Dropdown value is code. Display format in order attributes: `<code> <name>` (e.g., `9050 UFP International`).
