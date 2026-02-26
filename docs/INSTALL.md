@@ -418,6 +418,10 @@ query GetCustomerEntitlements($customerId: ID!) {
 3. Check browser console for errors
 4. Use the dev console preview link (`<tunnel>/extensions/dev-console`) rather than navigating checkout manually — Checkout Editor caches the tunnel URL across sessions
 
+### Checkout UI fields not showing on return visits
+
+On some production stores, Shopify returns a name-based handle (e.g., `custom-manual-payment-co-op`) instead of the hash-based handle when a payment method is pre-selected from a previous session. The extension includes a fallback that matches handles containing `co-op` or `plant` when the exact hash match fails. If fields still don't appear, check the browser console for the logged `selectedOptions` to see what handle Shopify is returning.
+
 ### Customer can't see Co-op/Plant payment
 
 1. Verify customer is logged in

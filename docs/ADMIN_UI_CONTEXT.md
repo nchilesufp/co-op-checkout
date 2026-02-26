@@ -35,7 +35,7 @@ The UI should automate these remaining manual setup steps:
 - Create the PaymentCustomization if it doesn't exist
 - Show current status (exists / enabled)
 
-**Note:** Payment method name matching is hardcoded in the function source (`"co-op"` and `"plant"`), not configurable via UI. Handle mapping is hardcoded in `Checkout.jsx`. These require code changes and redeployment when targeting a new store.
+**Note:** Payment method name matching is hardcoded in the function source (`"co-op"` and `"plant"`), not configurable via UI. Handle mapping is configured per-store via Checkout Editor settings (with hardcoded fallbacks and a name-based fallback for return-visit handle variants). No code changes needed for new stores — just configure the handles in the Checkout Editor.
 
 ### 2. Customer Entitlement Metafield Definitions (Step 4 in INSTALL.md)
 

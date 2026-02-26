@@ -224,6 +224,14 @@ for (const option of selectedOptions) {
     break;
   }
 }
+// Fallback: on some stores, Shopify returns a name-based handle on return visits
+// (e.g. "custom-manual-payment-co-op" instead of the hash). See Section 7 gotcha.
+if (!selectedPaymentType) {
+  for (const option of selectedOptions) {
+    if (option.handle.includes('co-op')) { selectedPaymentType = 'co-op'; break; }
+    if (option.handle.includes('plant')) { selectedPaymentType = 'plant'; break; }
+  }
+}
 ```
 
 Settings are defined in `shopify.extension.toml` as `coop_radio_label`, `coop_payment_handle`, and `plant_payment_handle` (all `single_line_text_field` type). Merchants configure them in the Checkout Editor when placing the block.
@@ -311,6 +319,7 @@ Settings are defined in `shopify.extension.toml` as `coop_radio_label`, `coop_pa
 - Plant method selected → Plant # text field appears, Notes optional
 - No code/number entered → Checkout blocked with error message
 - Order attributes set correctly after completion (`co_op_type`, `co_op_customer_code` or `co_op_plant_number`, `co_op_notes`)
+- Return visit (leave checkout, come back with Co-op/Plant pre-selected) → fields still render and validation still blocks
 
 ## 6.3 Debugging
 
@@ -346,6 +355,12 @@ Handles look like `custom-manual-payment-56cf4b0afa456be23003a3c1792143a1`. They
 A manual payment method's handle does not change across sessions or page reloads. It changes only if the payment method is deleted and recreated in Admin. If you recreate a payment method, you must:
 1. Re-discover the new handle
 2. Update the handle in the Checkout Editor settings for the Co-op Checkout block
+
+### Shopify may return a different handle format on return visits
+
+On some stores, when a buyer leaves checkout and returns with a payment method pre-selected from their previous session, `useSelectedPaymentOptions()` returns a **name-based handle** (e.g., `custom-manual-payment-co-op`) instead of the usual hash-based handle (e.g., `custom-manual-payment-a10cd6c44f627f6a0a3be7f57cd3baad`). This only affects the pre-selected state on return — actively clicking the payment method returns the correct hash handle.
+
+The Checkout UI extension handles this with a two-pass matching strategy: exact handle match first, then a name-based fallback that checks if the handle contains `co-op` or `plant`. This behavior has been observed on production stores but not dev stores.
 
 ### Payment method names must match exactly
 

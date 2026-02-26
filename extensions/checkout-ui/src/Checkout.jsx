@@ -7,7 +7,6 @@ import {
   useApplyAttributeChange,
   useApplyNoteChange,
   useInstructions,
-  useAttributeValues,
 } from '@shopify/ui-extensions/checkout/preact';
 
 const CUSTOMER_CODES = [
@@ -73,7 +72,10 @@ function Extension() {
     [plantHandle]: 'plant',
   };
 
-  // Detect which payment method is selected by looking up its handle
+  // Detect which payment method is selected by looking up its handle.
+  // Primary: exact match against configured handles (active selection).
+  // Fallback: on some stores, Shopify returns a simplified name-based handle
+  // on return visits (e.g. "custom-manual-payment-co-op" instead of the hash).
   const selectedOptions = useSelectedPaymentOptions();
   let selectedPaymentType = null;
   for (const option of selectedOptions) {
@@ -82,17 +84,11 @@ function Extension() {
       break;
     }
   }
-
-  // Fallback: on return visits, Co-op/Plant may be pre-selected visually but
-  // useSelectedPaymentOptions() can return an empty array. Use existing order
-  // attributes to detect the payment type so fields render and validation blocks.
-  // Only fall back when the hook reports no selections at all — if it reports
-  // selections that don't match our handles, the user switched payment methods.
-  const [existingPaymentType] = useAttributeValues(['Payment Type']);
-  if (!selectedPaymentType && selectedOptions.length === 0 && existingPaymentType) {
-    const normalized = existingPaymentType.toLowerCase();
-    if (normalized === 'co-op') selectedPaymentType = 'co-op';
-    else if (normalized === 'plant') selectedPaymentType = 'plant';
+  if (!selectedPaymentType) {
+    for (const option of selectedOptions) {
+      if (option.handle.includes('co-op')) { selectedPaymentType = 'co-op'; break; }
+      if (option.handle.includes('plant')) { selectedPaymentType = 'plant'; break; }
+    }
   }
 
   const instructions = useInstructions();
@@ -160,53 +156,73 @@ function Extension() {
     return { behavior: 'allow' };
   });
 
+  // Track written values to prevent redundant checkout updates.
+  // Shopify re-renders the extension after each applyAttributeChange call;
+  // writing the same value repeatedly triggers "frequent updates" warnings.
+  const writtenAttrs = useRef({});
+  const writtenNote = useRef('');
+
+  const updateAttribute = (key, value) => {
+    if (writtenAttrs.current[key] !== value) {
+      writtenAttrs.current[key] = value;
+      applyAttributeChange({ type: 'updateAttribute', key, value });
+    }
+  };
+
+  const updateNote = (note) => {
+    if (writtenNote.current !== note) {
+      writtenNote.current = note;
+      applyNoteChange({ type: 'updateNote', note });
+    }
+  };
+
   // Sync form values to order attributes
   useEffect(() => {
-    if (!selectedPaymentType || !instructions.attributes.canUpdateAttributes) return;
+    if (!instructions.attributes.canUpdateAttributes) return;
 
-    // Format type as sentence case: "Co-op" or "Plant"
-    const formattedType = selectedPaymentType === 'co-op' ? 'Co-op' : 'Plant';
-    applyAttributeChange({ type: 'updateAttribute', key: 'Payment Type', value: formattedType });
+    if (selectedPaymentType) {
+      const formattedType = selectedPaymentType === 'co-op' ? 'Co-op' : 'Plant';
+      updateAttribute('Payment Type', formattedType);
 
-    if (selectedPaymentType === 'co-op') {
-      // Set Customer Code, clear Plant Number
-      if (customerCode) {
-        const customerEntry = CUSTOMER_CODES.find((c) => c.code === customerCode);
-        const formattedCode = customerEntry ? `${customerCode} ${customerEntry.name}` : customerCode;
-        applyAttributeChange({ type: 'updateAttribute', key: 'Customer Code', value: formattedCode });
+      if (selectedPaymentType === 'co-op') {
+        if (customerCode) {
+          const customerEntry = CUSTOMER_CODES.find((c) => c.code === customerCode);
+          const formattedCode = customerEntry ? `${customerCode} ${customerEntry.name}` : customerCode;
+          updateAttribute('Customer Code', formattedCode);
+        }
+        updateAttribute('Plant Number', '');
+        if (showCoopRadio) {
+          updateAttribute('Big Box Order', coopRadioAnswer);
+        }
       }
-      applyAttributeChange({ type: 'updateAttribute', key: 'Plant Number', value: '' });
 
-      if (showCoopRadio) {
-        applyAttributeChange({ type: 'updateAttribute', key: 'Big Box Order', value: coopRadioAnswer });
+      if (selectedPaymentType === 'plant') {
+        if (plantNumber) {
+          updateAttribute('Plant Number', plantNumber);
+        }
+        updateAttribute('Customer Code', '');
       }
-    }
-
-    if (selectedPaymentType === 'plant') {
-      // Set Plant Number, clear Customer Code
-      if (plantNumber) {
-        applyAttributeChange({ type: 'updateAttribute', key: 'Plant Number', value: plantNumber });
-      }
-      applyAttributeChange({ type: 'updateAttribute', key: 'Customer Code', value: '' });
+    } else {
+      ['Payment Type', 'Customer Code', 'Plant Number', 'Big Box Order'].forEach((key) => {
+        updateAttribute(key, '');
+      });
+      updateNote('');
     }
   }, [selectedPaymentType, customerCode, plantNumber, coopRadioAnswer]);
 
-  // Sync notes to standard cart note (shows as "Notes from customer" on order)
+  // Debounce note sync — typing fires onInput per keystroke, and each
+  // applyNoteChange triggers a Shopify re-render. Wait for a pause in typing.
+  const noteTimer = useRef(null);
   useEffect(() => {
     if (!selectedPaymentType) return;
-    applyNoteChange({ type: 'updateNote', note: notes });
+
+    clearTimeout(noteTimer.current);
+    noteTimer.current = setTimeout(() => {
+      updateNote(notes);
+    }, 300);
+
+    return () => clearTimeout(noteTimer.current);
   }, [notes, selectedPaymentType]);
-
-  // Clear attributes when switching away from co-op/plant
-  useEffect(() => {
-    if (selectedPaymentType || !instructions.attributes.canUpdateAttributes) return;
-
-    const keysToClean = ['Payment Type', 'Customer Code', 'Plant Number', 'Big Box Order'];
-    keysToClean.forEach((key) => {
-      applyAttributeChange({ type: 'updateAttribute', key, value: '' });
-    });
-    applyNoteChange({ type: 'updateNote', note: '' });
-  }, [selectedPaymentType]);
 
   // Nothing to render if no co-op/plant method selected
   if (!selectedPaymentType) return null;

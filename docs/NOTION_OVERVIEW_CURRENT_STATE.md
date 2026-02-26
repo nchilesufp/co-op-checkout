@@ -40,7 +40,7 @@ This document reflects the current implementation in code before introducing a b
 - API version: `2026-01`
 - `block_progress = true` enabled in extension config
 - Behavior:
-  - Detects selected payment method using handle map (configured via Checkout Editor settings, with hardcoded fallbacks)
+  - Detects selected payment method using handle map (configured via Checkout Editor settings, with hardcoded fallbacks; includes name-based fallback for return-visit handle variants)
   - If Co-op selected:
     - Shows required `Customer Code` select (code list hardcoded in source)
     - Optionally shows required `Big Box Order` yes/no radio (if `coop_radio_label` setting is configured in Checkout Editor)
