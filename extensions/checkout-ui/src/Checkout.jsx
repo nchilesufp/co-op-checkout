@@ -7,6 +7,7 @@ import {
   useApplyAttributeChange,
   useApplyNoteChange,
   useInstructions,
+  useAttributeValues,
 } from '@shopify/ui-extensions/checkout/preact';
 
 const CUSTOMER_CODES = [
@@ -80,6 +81,18 @@ function Extension() {
       selectedPaymentType = paymentMethodHandles[option.handle];
       break;
     }
+  }
+
+  // Fallback: on return visits, Co-op/Plant may be pre-selected visually but
+  // useSelectedPaymentOptions() can return an empty array. Use existing order
+  // attributes to detect the payment type so fields render and validation blocks.
+  // Only fall back when the hook reports no selections at all — if it reports
+  // selections that don't match our handles, the user switched payment methods.
+  const [existingPaymentType] = useAttributeValues(['Payment Type']);
+  if (!selectedPaymentType && selectedOptions.length === 0 && existingPaymentType) {
+    const normalized = existingPaymentType.toLowerCase();
+    if (normalized === 'co-op') selectedPaymentType = 'co-op';
+    else if (normalized === 'plant') selectedPaymentType = 'plant';
   }
 
   const instructions = useInstructions();
